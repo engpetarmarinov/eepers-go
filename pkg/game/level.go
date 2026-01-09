@@ -107,6 +107,8 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 				gs.Map[y][x] = world.CellFloor
 				if updatePlayer {
 					gs.Player.Position = world.IVector2{X: x, Y: y}
+					// Initialize eyes target to look down (default direction)
+					gs.Player.EyesTarget = world.IVector2{X: x, Y: y + 1}
 				}
 			default:
 				gs.Map[y][x] = world.CellFloor

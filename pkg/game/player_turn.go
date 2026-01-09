@@ -74,6 +74,9 @@ func (gs *State) PlayerTurn(dir Direction) {
 	gs.Player.PrevPosition = gs.Player.Position
 	newPos := gs.Player.Position.Add(DirectionVector[dir])
 
+	// Set eyes target to look in the direction of movement
+	gs.Player.EyesTarget = newPos.Add(DirectionVector[dir])
+
 	if !gs.WithinMap(newPos) {
 		return
 	}
