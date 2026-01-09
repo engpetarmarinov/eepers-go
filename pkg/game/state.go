@@ -13,8 +13,18 @@ type State struct {
 	Items              []entities.Item
 	Eepers             []entities.EeperState
 	Bombs              []entities.BombState
+	Explosions         []entities.ExplosionState
 	TurnAnimation      float32
 	Camera             rl.Camera2D
 	Tutorial           TutorialState
 	DurationOfLastTurn float64
+}
+
+// AllocateItem adds a new item to the game state at the specified position.
+func (gs *State) AllocateItem(position world.IVector2, kind entities.ItemKind) {
+	gs.Items = append(gs.Items, entities.Item{
+		Position: position,
+		Kind:     kind,
+		Cooldown: 0,
+	})
 }

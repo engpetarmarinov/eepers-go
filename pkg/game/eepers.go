@@ -1,8 +1,6 @@
 package game
 
 import (
-	"math/rand"
-
 	"github.com/engpetarmarinov/eepers-go/pkg/entities"
 	"github.com/engpetarmarinov/eepers-go/pkg/pathfinding"
 	"github.com/engpetarmarinov/eepers-go/pkg/world"
@@ -85,16 +83,4 @@ func (gs *State) eeperCanStandHere(pos world.IVector2, currentEeper *entities.Ee
 func (gs *State) isPlayerInAttackRange(eeper *entities.EeperState) bool {
 	return gs.Player.Position.X >= eeper.Position.X && gs.Player.Position.X < eeper.Position.X+eeper.Size.X &&
 		gs.Player.Position.Y >= eeper.Position.Y && gs.Player.Position.Y < eeper.Position.Y+eeper.Size.Y
-}
-
-func (gs *State) spawnGnome(pos world.IVector2) {
-	if rand.Float32() < 0.2 { // 20% chance to spawn
-		newGnome := entities.EeperState{
-			Kind:     entities.EeperGnome,
-			Position: pos,
-			Size:     world.IVector2{X: 1, Y: 1},
-			Health:   1,
-		}
-		gs.Eepers = append(gs.Eepers, newGnome)
-	}
 }

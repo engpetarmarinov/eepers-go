@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	bombCountdown = 3
-	explosionTime = 2
+	bombCountdown = 5
 )
 
 // PlantBomb creates a new bomb at the player's position.
@@ -38,26 +37,92 @@ func (gs *State) UpdateBombs() {
 }
 
 // Explode creates an explosion at a given position.
-func (gs *State) Explode(pos world.IVector2) {
+func (gs *State) Explode(position world.IVector2) {
+	// Create an explosion at the bomb's location
+	gs.Explosions = append(gs.Explosions, entities.ExplosionState{
+		Position:     position,
+		Timer:        20, // Explosion lasts for 20 frames
+		InitialTimer: 20,
+	})
+	gs.Map[position.Y][position.X] = world.CellExplosion
+
+	// And in all four directions
+	for _, dir := range Directions {
+		for i := 1; i <= 4; i++ {
+			pos := position.Add(dir.Mul(i))
+
+			mapWidth := len(gs.Map[0])
+			mapHeight := len(gs.Map)
+			if pos.X < 0 || pos.X >= mapWidth || pos.Y < 0 || pos.Y >= mapHeight {
+				break // Stop if we go out of bounds
+			}
+
+			if gs.Map[pos.Y][pos.X] == world.CellWall {
+				break // Stop if we hit a wall
+			}
+
+			// If we hit a barricade, flood fill it with explosions and stop
+			if gs.Map[pos.Y][pos.X] == world.CellBarricade {
+				gs.FloodFill(pos, world.CellBarricade, world.CellExplosion)
+				break
+			}
+
+			gs.Explosions = append(gs.Explosions, entities.ExplosionState{
+				Position:     pos,
+				Timer:        20,
+				InitialTimer: 20,
+			})
+			gs.Map[pos.Y][pos.X] = world.CellExplosion
+		}
+	}
+
 	rl.PlaySound(audio.BlastSound)
-	for y := pos.Y - 1; y <= pos.Y+1; y++ {
-		for x := pos.X - 1; x <= pos.X+1; x++ {
-			if gs.WithinMap(world.IVector2{X: x, Y: y}) {
-				if gs.Player.Position.X == x && gs.Player.Position.Y == y {
-					gs.KillPlayer()
-				}
+}
 
-				for i := range gs.Eepers {
-					eeper := &gs.Eepers[i]
-					if !eeper.Dead && x >= eeper.Position.X && x < eeper.Position.X+eeper.Size.X && y >= eeper.Position.Y && y < eeper.Position.Y+eeper.Size.Y {
-						eeper.Health -= 0.5
-						if eeper.Kind == entities.EeperMother {
-							gs.spawnGnome(eeper.Position)
-						}
-					}
-				}
+// FloodFill fills all connected cells of the same type with a new cell type.
+// This is used to destroy entire barricades when an explosion hits them.
+func (gs *State) FloodFill(start world.IVector2, background world.Cell, fill world.Cell) {
+	mapWidth := len(gs.Map[0])
+	mapHeight := len(gs.Map)
 
-				gs.Map[y][x] = world.CellExplosion
+	// Check if start position is valid
+	if start.X < 0 || start.X >= mapWidth || start.Y < 0 || start.Y >= mapHeight {
+		return
+	}
+
+	// Initialize queue with start position
+	queue := []world.IVector2{start}
+	gs.Map[start.Y][start.X] = fill
+
+	// Add explosion at the start position
+	gs.Explosions = append(gs.Explosions, entities.ExplosionState{
+		Position:     start,
+		Timer:        20,
+		InitialTimer: 20,
+	})
+
+	// BFS flood fill
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		// Check all four directions
+		for _, dir := range Directions {
+			newPos := current.Add(dir)
+
+			// Check if position is valid and has the background cell type
+			if newPos.X >= 0 && newPos.X < mapWidth && newPos.Y >= 0 && newPos.Y < mapHeight {
+				if gs.Map[newPos.Y][newPos.X] == background {
+					gs.Map[newPos.Y][newPos.X] = fill
+					queue = append(queue, newPos)
+
+					// Add explosion at this position
+					gs.Explosions = append(gs.Explosions, entities.ExplosionState{
+						Position:     newPos,
+						Timer:        20,
+						InitialTimer: 20,
+					})
+				}
 			}
 		}
 	}

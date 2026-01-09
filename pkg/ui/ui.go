@@ -1,22 +1,27 @@
 package ui
 
 import (
-	"fmt"
-
 	"github.com/engpetarmarinov/eepers-go/pkg/game"
 	"github.com/engpetarmarinov/eepers-go/pkg/palette"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// DrawUI draws the game's UI.
-func DrawUI(gs *game.State, screenWidth int32) {
-	// Draw bomb counter
-	bombText := fmt.Sprintf("Bombs: %d/%d", gs.Player.Bombs, gs.Player.BombSlots)
-	rl.DrawText(bombText, 10, 10, 20, palette.Colors["COLOR_LABEL"])
+const cellSize float32 = 50.0
 
-	// Draw key counter
-	keyText := fmt.Sprintf("Keys: %d", gs.Player.Keys)
-	rl.DrawText(keyText, 10, 40, 20, palette.Colors["COLOR_LABEL"])
+// DrawUI draws the game's UI with visual inventory display.
+func DrawUI(gs *game.State, screenWidth int32) {
+	// Draw keys as circles (like in original ADA version)
+	for i := 0; i < gs.Player.Keys; i++ {
+		position := rl.NewVector2(100.0+float32(i)*cellSize, 100.0)
+		rl.DrawCircleV(position, cellSize*0.25, palette.Colors["COLOR_DOORKEY"])
+	}
+
+	// Draw bombs as circles - only show available bombs
+	var padding float32 = cellSize * 0.5
+	for i := 0; i < gs.Player.Bombs; i++ {
+		position := rl.NewVector2(100.0+float32(i)*(cellSize+padding), 200.0)
+		rl.DrawCircleV(position, cellSize*0.5, palette.Colors["COLOR_BOMB"])
+	}
 
 	// Draw health bar
 	healthBarWidth := int32(200)

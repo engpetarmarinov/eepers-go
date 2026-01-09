@@ -12,8 +12,8 @@ const (
 	CellNone Cell = iota
 	CellFloor
 	CellWall
-	CellBarricade
 	CellDoor
+	CellBarricade
 	CellExplosion
 )
 
@@ -26,10 +26,10 @@ func CellColor(c Cell) rl.Color {
 		return palette.Colors["COLOR_FLOOR"]
 	case CellWall:
 		return palette.Colors["COLOR_WALL"]
+	case CellDoor:
+		return palette.Colors["COLOR_DOOR"]
 	case CellBarricade:
 		return palette.Colors["COLOR_BARRICADE"]
-	case CellDoor:
-		return palette.Colors["COLOR_DOORKEY"]
 	case CellExplosion:
 		return palette.Colors["COLOR_EXPLOSION"]
 	default:

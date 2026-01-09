@@ -5,6 +5,7 @@ import (
 	_ "image/png" // import the png decoder
 	"os"
 
+	"github.com/engpetarmarinov/eepers-go/pkg/entities"
 	"github.com/engpetarmarinov/eepers-go/pkg/world"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -48,7 +49,7 @@ var LevelCellColor = map[LevelCell]rl.Color{
 }
 
 // LoadGameFromImage loads a game state from an image file.
-func LoadGameFromImage(filePath string, gs *State, updatePlayer bool, updateCamera bool) error {
+func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -90,6 +91,18 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool, updateCame
 				gs.Map[y][x] = world.CellDoor
 			case LevelBarricade:
 				gs.Map[y][x] = world.CellBarricade
+			case LevelCheckpoint:
+				gs.Map[y][x] = world.CellFloor
+				gs.AllocateItem(world.IVector2{X: x, Y: y}, entities.ItemCheckpoint)
+			case LevelBombRefill:
+				gs.Map[y][x] = world.CellFloor
+				gs.AllocateItem(world.IVector2{X: x, Y: y}, entities.ItemBombRefill)
+			case LevelBombSlot:
+				gs.Map[y][x] = world.CellFloor
+				gs.AllocateItem(world.IVector2{X: x, Y: y}, entities.ItemBombSlot)
+			case LevelKey:
+				gs.Map[y][x] = world.CellFloor
+				gs.AllocateItem(world.IVector2{X: x, Y: y}, entities.ItemKey)
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
 				if updatePlayer {

@@ -27,6 +27,48 @@ var DirectionVector = map[Direction]world.IVector2{
 	Down:  {X: 0, Y: 1},
 }
 
+func (gs *State) RemoveDoor(startPos world.IVector2) {
+	q := []world.IVector2{startPos}
+	visited := make(map[world.IVector2]bool)
+	visited[startPos] = true
+
+	for len(q) > 0 {
+		curr := q[0]
+		q = q[1:]
+
+		if gs.WithinMap(curr) && (gs.Map[curr.Y][curr.X] == world.CellDoor || gs.Map[curr.Y][curr.X] == world.CellBarricade) {
+			isBarricade := gs.Map[curr.Y][curr.X] == world.CellBarricade
+			gs.Map[curr.Y][curr.X] = world.CellFloor
+
+			// Cardinal directions
+			for _, dir := range DirectionVector {
+				next := curr.Add(dir)
+				if _, found := visited[next]; !found {
+					if gs.WithinMap(next) && ((isBarricade && gs.Map[next.Y][next.X] == world.CellBarricade) || (!isBarricade && gs.Map[next.Y][next.X] == world.CellDoor)) {
+						q = append(q, next)
+						visited[next] = true
+					}
+				}
+			}
+			// Diagonal directions
+			for _, diag := range []world.IVector2{
+				{X: -1, Y: -1},
+				{X: -1, Y: 1},
+				{X: 1, Y: -1},
+				{X: 1, Y: 1},
+			} {
+				next := curr.Add(diag)
+				if _, found := visited[next]; !found {
+					if gs.WithinMap(next) && ((isBarricade && gs.Map[next.Y][next.X] == world.CellBarricade) || (!isBarricade && gs.Map[next.Y][next.X] == world.CellDoor)) {
+						q = append(q, next)
+						visited[next] = true
+					}
+				}
+			}
+		}
+	}
+}
+
 // PlayerTurn handles the player's turn.
 func (gs *State) PlayerTurn(dir Direction) {
 	gs.Player.PrevPosition = gs.Player.Position
@@ -49,10 +91,11 @@ func (gs *State) PlayerTurn(dir Direction) {
 					item.Kind = entities.ItemNone // Mark as collected
 					rl.PlaySound(audio.KeyPickupSound)
 				case entities.ItemBombRefill:
-					if gs.Player.Bombs < gs.Player.BombSlots {
+					// Only pick up if we have space and the item is not on cooldown
+					if gs.Player.Bombs < gs.Player.BombSlots && item.Cooldown <= 0 {
 						gs.Player.Bombs++
+						item.Cooldown = 10 // BOMB_GENERATOR_COOLDOWN
 						rl.PlaySound(audio.BombPickupSound)
-						item.Kind = entities.ItemNone // Mark as collected
 					}
 				case entities.ItemBombSlot:
 					gs.Player.BombSlots++
@@ -67,10 +110,12 @@ func (gs *State) PlayerTurn(dir Direction) {
 	case world.CellDoor:
 		if gs.Player.Keys > 0 {
 			gs.Player.Keys--
-			gs.Map[newPos.Y][newPos.X] = world.CellFloor
+			gs.RemoveDoor(newPos)
 			gs.Player.Position = newPos
 			rl.PlaySound(audio.OpenDoorSound)
 		}
+	case world.CellBarricade:
+		// Player cannot move through barricades
 	}
 }
 
