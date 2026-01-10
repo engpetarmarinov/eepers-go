@@ -141,14 +141,14 @@ func main() {
 		if !gs.Menu.IsOpen {
 			switch gs.Tutorial.Phase {
 			case game.TutorialMove:
-				gs.ShowPopup("Use arrow keys or left stick to move")
+				gs.ShowPopup("Use arrow keys or left stick to move.")
 				if inputState.MoveRight || inputState.MoveLeft || inputState.MoveUp || inputState.MoveDown {
 					gs.Tutorial.KnowsHowToMove = true
 					gs.HidePopup()
 					gs.Tutorial.Phase = game.TutorialPlaceBombs
 				}
 			case game.TutorialPlaceBombs:
-				gs.ShowPopup("Press space or A button to plant a bomb")
+				gs.ShowPopup("Press space or A button to plant a bomb.")
 				if inputState.PlaceBomb {
 					gs.Tutorial.KnowsHowToPlaceBombs = true
 					gs.HidePopup()
@@ -234,7 +234,7 @@ func main() {
 				}
 
 				// Keep popup visible during entire animation
-				gs.ShowPopup("YOU FOUND THE FATHER!")
+				gs.ShowPopup("You found the father of the eepers!")
 
 				// Victory animation: zoom in camera over 11 seconds
 				const victoryAnimationTime = 11.0
@@ -393,7 +393,7 @@ func main() {
 		// Draw UI in screen space (outside of Mode2D)
 		ui.DrawUI(gs, screenWidth)
 
-		rl.DrawText("Eepers in Go!", 10, 10, 20, rl.LightGray)
+		rl.DrawText("Eepers Go", 10, 10, 20, rl.LightGray)
 
 		// Draw menu on top of everything
 		gs.Menu.DrawMenu(screenWidth, screenHeight)
