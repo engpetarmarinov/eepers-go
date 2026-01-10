@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	bombCountdown   = 5
+	bombCountdown   = 3
 	explosionDamage = 0.45
 )
 
@@ -89,7 +89,6 @@ func (gs *State) Explode(position world.IVector2) {
 	for _, dir := range Directions {
 		for i := 1; i <= 4; i++ {
 			pos := position.Add(dir.Mul(i))
-
 			mapWidth := len(gs.Map[0])
 			mapHeight := len(gs.Map)
 			if pos.X < 0 || pos.X >= mapWidth || pos.Y < 0 || pos.Y >= mapHeight {
