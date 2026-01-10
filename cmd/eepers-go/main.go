@@ -409,7 +409,7 @@ func main() {
 		if gs.TurnAnimation > 0 {
 			animSpeed := float32(10.0)
 			if inputState.IsRunning {
-				animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
+				animSpeed = 12 // 20% faster when sprinting
 			}
 			gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
 			// Clamp to 0 to prevent negative values that cause extrapolation
