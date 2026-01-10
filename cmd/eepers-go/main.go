@@ -223,6 +223,18 @@ func main() {
 				// Restore from last checkpoint
 				gs.RestoreCheckpoint()
 			}
+
+			// Check victory condition - player reached Father!
+			if gs.Player.ReachedFather {
+				// Reload level and save checkpoint (victory!)
+				err = game.LoadGameFromImage("assets/map.png", gs, true)
+				if err != nil {
+					panic(err)
+				}
+				gs.Player.Health = 1.0
+				gs.Player.ReachedFather = false
+				gs.SaveCheckpoint()
+			}
 		}
 
 		// Update camera

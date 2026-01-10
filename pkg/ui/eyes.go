@@ -44,23 +44,21 @@ func DrawPlayerEyes(player entities.PlayerState, interpPos rl.Vector2) {
 func DrawEeperEyes(eeper entities.EeperState, interpPos rl.Vector2, turnAnimation float32) {
 	eyeColor := palette.Colors["COLOR_EYES"]
 
-	// Adjust eye size based on eeper type
-	var eyeWidth, eyeHeight float32
-	var eeperRenderSize float32
-
+	// Calculate rendered size (accounts for gnome 70% scaling)
+	var eeperRenderSize rl.Vector2
 	if eeper.Kind == entities.EeperGnome {
-		// Gnomes are small (1x1 cell * 0.7 scale = 35x35 pixels)
-		eyeWidth = 8
-		eyeHeight = 16
-		eeperRenderSize = 35.0 // 50 * 0.7
+		// Gnomes are rendered at 70% size
+		gnomeRatio := float32(0.7)
+		eeperRenderSize = rl.NewVector2(float32(eeper.Size.X)*50.0*gnomeRatio, float32(eeper.Size.Y)*50.0*gnomeRatio)
 	} else {
-		// Guards and other large eepers
-		eyeWidth = 18
-		eyeHeight = 40
-		eeperRenderSize = float32(eeper.Size.X) * 50.0
+		// All other eepers rendered at full size
+		eeperRenderSize = rl.NewVector2(float32(eeper.Size.X)*50.0, float32(eeper.Size.Y)*50.0)
 	}
 
-	eyeSize := rl.NewVector2(eyeWidth, eyeHeight)
+	// Eyes size as ratio of eeper size
+	eyeRatioWidth := float32(13.0 / 64.0)
+	eyeRatioHeight := float32(23.0 / 64.0)
+	eyeSize := rl.NewVector2(eeperRenderSize.X*eyeRatioWidth, eeperRenderSize.Y*eyeRatioHeight)
 
 	// Calculate eye offset based on looking direction
 	lookDir := rl.NewVector2(
@@ -72,27 +70,26 @@ func DrawEeperEyes(eeper entities.EeperState, interpPos rl.Vector2, turnAnimatio
 	length := float32(math.Sqrt(float64(lookDir.X*lookDir.X + lookDir.Y*lookDir.Y)))
 	eyeOffset := rl.NewVector2(0, 0)
 	if length > 0.01 {
+		eyeOffsetScale := eyeSize.X * 0.6
 		eyeOffset = rl.NewVector2(
-			(lookDir.X/length)*2.0, // Reduced for gnomes
-			(lookDir.Y/length)*2.0,
+			(lookDir.X/length)*eyeOffsetScale,
+			(lookDir.Y/length)*eyeOffsetScale,
 		)
 	}
 
-	// Position eyes based on rendered size
-	eeperCenterX := eeperRenderSize * 0.5 // Center of rendered eeper
-	eeperEyeY := eeperRenderSize * 0.3    // Upper portion for eyes
+	// Position eyes at center of eeper
+	center := rl.NewVector2(interpPos.X+eeperRenderSize.X*0.5, interpPos.Y+eeperRenderSize.Y*0.5)
+	eyePosition := rl.Vector2Add(center, eyeOffset)
 
-	// Adjust eye spacing based on size
-	eyeSpacing := eeperRenderSize * 0.2
-	if eeper.Kind == entities.EeperGnome {
-		eyeSpacing = 6.0 // Smaller spacing for gnomes
-	}
-
-	leftEyeOffset := rl.NewVector2(eeperCenterX-eyeSpacing, eeperEyeY)
-	rightEyeOffset := rl.NewVector2(eeperCenterX+eyeSpacing, eeperEyeY)
-
-	leftEyePos := rl.Vector2Add(rl.Vector2Add(interpPos, leftEyeOffset), eyeOffset)
-	rightEyePos := rl.Vector2Add(rl.Vector2Add(interpPos, rightEyeOffset), eyeOffset)
+	// Calculate left and right eye positions
+	leftEyePos := rl.NewVector2(
+		eyePosition.X-eyeSize.X*1.0,
+		eyePosition.Y+eyeSize.Y*0.2,
+	)
+	rightEyePos := rl.NewVector2(
+		eyePosition.X+eyeSize.X*1.0,
+		eyePosition.Y+eyeSize.Y*0.2,
+	)
 
 	drawEye(leftEyePos, eyeSize, entities.EyesMeshes[eeper.Eyes][0], eyeColor)
 	drawEye(rightEyePos, eyeSize, entities.EyesMeshes[eeper.Eyes][1], eyeColor)

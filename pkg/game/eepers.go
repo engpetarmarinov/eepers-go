@@ -17,6 +17,7 @@ const (
 	guardTurnRegeneration = 0.01
 	gnomeStepsLimit       = 9 // Gnomes can detect player up to 9 steps away
 	gnomeStepLengthLimit  = 1 // Gnomes move only 1 cell at a time
+	fatherWakeUpRadius    = 3 // Father wakes up when player is within 3 cells
 )
 
 // UpdateEepers updates the state of all eepers.
@@ -35,7 +36,7 @@ func (gs *State) UpdateEepers() {
 		case entities.EeperGnome:
 			gs.updateGnome(eeper)
 		case entities.EeperFather:
-			// To be implemented
+			gs.updateFather(eeper)
 		}
 	}
 }
@@ -115,6 +116,51 @@ func (gs *State) updateMother(eeper *entities.EeperState) {
 	// Mother eepers behave identically to guards, just with different size
 	// Reuse the guard update logic
 	gs.updateGuard(eeper)
+}
+
+// updateFather updates the Father eeper - the goal of the game!
+func (gs *State) updateFather(eeper *entities.EeperState) {
+	// Set previous position at START of turn
+	eeper.PrevPosition = eeper.Position
+	eeper.PrevEyes = eeper.Eyes
+
+	// Check if player is touching Father (victory condition!)
+	if gs.isPlayerInAttackRange(eeper) {
+		// Player reached Father - reload level and save checkpoint (victory!)
+		println("Victory! Player reached Father!")
+		// This will trigger level reload in the main game loop
+		gs.Player.ReachedFather = true
+		rl.PlaySound(audio.CheckpointSound)
+		return
+	}
+
+	// Check if player is within wake-up radius (3 cells around Father)
+	wakeUpRect := struct {
+		X, Y, W, H int
+	}{
+		X: eeper.Position.X - fatherWakeUpRadius,
+		Y: eeper.Position.Y - fatherWakeUpRadius,
+		W: eeper.Size.X + fatherWakeUpRadius*2,
+		H: eeper.Size.Y + fatherWakeUpRadius*2,
+	}
+
+	playerInWakeRadius := gs.Player.Position.X >= wakeUpRect.X &&
+		gs.Player.Position.X < wakeUpRect.X+wakeUpRect.W &&
+		gs.Player.Position.Y >= wakeUpRect.Y &&
+		gs.Player.Position.Y < wakeUpRect.Y+wakeUpRect.H
+
+	if playerInWakeRadius {
+		// Player is nearby - Father wakes up and tracks with eyes
+		eeper.Eyes = entities.EyesOpen
+		eeper.EyesTarget = gs.Player.Position
+	} else {
+		// Player is far - Father sleeps
+		eeper.Eyes = entities.EyesClosed
+		eeper.EyesTarget = world.IVector2{
+			X: eeper.Position.X + eeper.Size.X/2,
+			Y: eeper.Position.Y + eeper.Size.Y,
+		}
+	}
 }
 
 func (gs *State) moveGuardTowardPlayer(eeper *entities.EeperState) bool {
@@ -411,4 +457,27 @@ func (gs *State) SpawnMother(position world.IVector2) {
 	}
 
 	gs.Eepers = append(gs.Eepers, mother)
+}
+
+// SpawnFather creates a new Father eeper at the specified position - the goal!
+func (gs *State) SpawnFather(position world.IVector2) {
+	size := world.IVector2{X: 7, Y: 7} // Father is 7x7 (large, same as Mother)
+
+	// Father doesn't need path map (doesn't chase)
+	father := entities.EeperState{
+		Kind:         entities.EeperFather,
+		Dead:         false,
+		Position:     position,
+		PrevPosition: position,
+		EyesAngle:    0,
+		EyesTarget:   world.IVector2{X: position.X + size.X/2, Y: position.Y + size.Y},
+		PrevEyes:     entities.EyesClosed,
+		Eyes:         entities.EyesClosed,
+		Size:         size,
+		Path:         nil, // Father doesn't use pathfinding
+		Damaged:      false,
+		Health:       1.0, // Immune to damage anyway
+	}
+
+	gs.Eepers = append(gs.Eepers, father)
 }

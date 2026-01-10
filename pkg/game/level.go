@@ -113,7 +113,7 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 				gs.SpawnGnome(world.IVector2{X: x, Y: y})
 			case LevelFather:
 				gs.Map[y][x] = world.CellFloor
-				// Father eepers will be implemented later
+				gs.SpawnFather(world.IVector2{X: x, Y: y})
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
 				if updatePlayer {
