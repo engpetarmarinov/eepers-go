@@ -17,13 +17,17 @@ const (
 
 // InputState represents the current input state from keyboard or controller
 type InputState struct {
-	MoveRight bool
-	MoveLeft  bool
-	MoveUp    bool
-	MoveDown  bool
-	PlaceBomb bool
-	IsRunning bool
-	IsPressed bool // For turn-based movement (false means held down for continuous)
+	MoveRight        bool
+	MoveLeft         bool
+	MoveUp           bool
+	MoveDown         bool
+	PlaceBomb        bool
+	IsRunning        bool
+	IsPressed        bool // For turn-based movement (false means held down for continuous)
+	MenuToggle       bool // ESC key or Menu/Start button
+	MenuConfirm      bool // Enter key or A button (when in menu)
+	MenuNavigateUp   bool // Up arrow/stick (for menu navigation)
+	MenuNavigateDown bool // Down arrow/stick (for menu navigation)
 }
 
 // AnalogState tracks previous analog stick state for detecting new presses
@@ -58,6 +62,12 @@ func GetInput() InputState {
 	input.MoveDown = keyboardInput.MoveDown || gamepadInput.MoveDown
 	input.PlaceBomb = keyboardInput.PlaceBomb || gamepadInput.PlaceBomb
 
+	// Menu inputs
+	input.MenuToggle = keyboardInput.MenuToggle || gamepadInput.MenuToggle
+	input.MenuConfirm = keyboardInput.MenuConfirm || gamepadInput.MenuConfirm
+	input.MenuNavigateUp = keyboardInput.MenuNavigateUp || gamepadInput.MenuNavigateUp
+	input.MenuNavigateDown = keyboardInput.MenuNavigateDown || gamepadInput.MenuNavigateDown
+
 	// Running mode is active if either keyboard shift OR gamepad trigger is held
 	input.IsRunning = keyboardInput.IsRunning || gamepadInput.IsRunning
 
@@ -88,6 +98,13 @@ func getGamepadInput() InputState {
 		leftStickY = 0
 	}
 
+	// Detect analog stick threshold crossings BEFORE updating previous state
+	// This is used for both movement and menu navigation
+	stickUpPressed := leftStickY < -AnalogDeadZone && analogState.PrevStickY >= -AnalogDeadZone
+	stickDownPressed := leftStickY > AnalogDeadZone && analogState.PrevStickY <= AnalogDeadZone
+	stickLeftPressed := leftStickX < -AnalogDeadZone && analogState.PrevStickX >= -AnalogDeadZone
+	stickRightPressed := leftStickX > AnalogDeadZone && analogState.PrevStickX <= AnalogDeadZone
+
 	// Determine movement direction based on analog stick
 	// When running (trigger held), use continuous movement
 	// When not running, detect threshold crossings for turn-based movement
@@ -100,23 +117,10 @@ func getGamepadInput() InputState {
 	} else {
 		// For turn-based movement, detect new threshold crossings
 		input.IsPressed = true
-
-		// Detect right press (crossing from neutral/left to right)
-		if leftStickX > AnalogDeadZone && analogState.PrevStickX <= AnalogDeadZone {
-			input.MoveRight = true
-		}
-		// Detect left press (crossing from neutral/right to left)
-		if leftStickX < -AnalogDeadZone && analogState.PrevStickX >= -AnalogDeadZone {
-			input.MoveLeft = true
-		}
-		// Detect down press (crossing from neutral/up to down)
-		if leftStickY > AnalogDeadZone && analogState.PrevStickY <= AnalogDeadZone {
-			input.MoveDown = true
-		}
-		// Detect up press (crossing from neutral/down to up)
-		if leftStickY < -AnalogDeadZone && analogState.PrevStickY >= -AnalogDeadZone {
-			input.MoveUp = true
-		}
+		input.MoveRight = stickRightPressed
+		input.MoveLeft = stickLeftPressed
+		input.MoveDown = stickDownPressed
+		input.MoveUp = stickUpPressed
 	}
 
 	// Update previous state
@@ -163,6 +167,17 @@ func getGamepadInput() InputState {
 	// A button for placing bombs (like Space key)
 	input.PlaceBomb = rl.IsGamepadButtonPressed(GamepadPlayer1, rl.GamepadButtonRightFaceDown)
 
+	// Menu controls
+	// Start/Menu button to toggle menu (button 7 on most controllers)
+	input.MenuToggle = rl.IsGamepadButtonPressed(GamepadPlayer1, rl.GamepadButtonMiddleRight)
+
+	// A button also confirms menu selection
+	input.MenuConfirm = rl.IsGamepadButtonPressed(GamepadPlayer1, rl.GamepadButtonRightFaceDown)
+
+	// Menu navigation with D-pad or analog stick (using the pre-calculated press states)
+	input.MenuNavigateUp = rl.IsGamepadButtonPressed(GamepadPlayer1, rl.GamepadButtonLeftFaceUp) || stickUpPressed
+	input.MenuNavigateDown = rl.IsGamepadButtonPressed(GamepadPlayer1, rl.GamepadButtonLeftFaceDown) || stickDownPressed
+
 	return input
 }
 
@@ -191,6 +206,12 @@ func getKeyboardInput() InputState {
 
 	// Space for placing bombs
 	input.PlaceBomb = rl.IsKeyPressed(rl.KeySpace)
+
+	// Menu controls
+	input.MenuToggle = rl.IsKeyPressed(rl.KeyEscape)
+	input.MenuConfirm = rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeyKpEnter)
+	input.MenuNavigateUp = rl.IsKeyPressed(rl.KeyUp) || rl.IsKeyPressed(rl.KeyW)
+	input.MenuNavigateDown = rl.IsKeyPressed(rl.KeyDown) || rl.IsKeyPressed(rl.KeyS)
 
 	return input
 }

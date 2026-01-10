@@ -13,13 +13,52 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// restartGame resets all game state and reloads the level
+func restartGame(gs *game.State) error {
+	// Clear all dynamic game state
+	gs.Bombs = nil
+	gs.Explosions = nil
+	gs.Eepers = nil
+	gs.Items = nil
+	gs.TurnAnimation = 0
+	gs.ShouldQuit = false
+
+	// Reload the map
+	err := game.LoadGameFromImage("assets/map.png", gs, true)
+	if err != nil {
+		return err
+	}
+
+	// Reset player state
+	gs.Player.Health = 1.0
+	gs.Player.BombSlots = 1
+	gs.Player.Bombs = 0
+	gs.Player.Keys = 0
+	gs.Player.Dead = false
+
+	// Reset camera
+	gs.Camera.Zoom = 1.0
+
+	// Reset menu and tutorial
+	gs.Menu = game.NewMenuState()
+	gs.Tutorial = game.TutorialState{
+		Phase: game.TutorialMove,
+	}
+
+	return nil
+}
+
 func main() {
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 	screenWidth := int32(rl.GetMonitorWidth(0))
 	screenHeight := int32(rl.GetMonitorHeight(0))
 
 	rl.InitWindow(screenWidth, screenHeight, "Eepers - Go Edition")
-	rl.MaximizeWindow()
+	rl.ToggleFullscreen()
+
+	// Disable ESC key as default exit key so we can use it for menu
+	rl.SetExitKey(0)
+
 	defer rl.CloseWindow()
 
 	audio.LoadAudio()
@@ -38,101 +77,133 @@ func main() {
 	gs.Player.Health = 1.0
 	gs.Player.BombSlots = 1
 	gs.Camera.Zoom = 1.0
+	gs.Menu = game.NewMenuState()
 
 	rl.SetTargetFPS(60)
 
-	for !rl.WindowShouldClose() {
+	for !rl.WindowShouldClose() && !gs.ShouldQuit {
 		screenWidth := int32(rl.GetScreenWidth())
 		screenHeight := int32(rl.GetScreenHeight())
 		gs.Camera.Offset = rl.NewVector2(float32(screenWidth/2), float32(screenHeight/2))
 		inputState := input.GetInput()
-		switch gs.Tutorial.Phase {
-		case game.TutorialMove:
-			gs.ShowPopup("Use arrow keys or left stick to move")
-			if inputState.MoveRight || inputState.MoveLeft || inputState.MoveUp || inputState.MoveDown {
-				gs.Tutorial.KnowsHowToMove = true
-				gs.HidePopup()
-				gs.Tutorial.Phase = game.TutorialPlaceBombs
+
+		// Handle menu toggle
+		if inputState.MenuToggle {
+			gs.Menu.ToggleMenu()
+		}
+
+		// Handle menu input when menu is open
+		if gs.Menu.IsOpen {
+			if inputState.MenuNavigateUp {
+				gs.Menu.MoveUp()
 			}
-		case game.TutorialPlaceBombs:
-			gs.ShowPopup("Press space or A button to plant a bomb")
-			if inputState.PlaceBomb {
-				gs.Tutorial.KnowsHowToPlaceBombs = true
-				gs.HidePopup()
-				gs.Tutorial.Phase = game.TutorialDone
+			if inputState.MenuNavigateDown {
+				gs.Menu.MoveDown()
+			}
+			if inputState.MenuConfirm {
+				switch gs.Menu.SelectedOption {
+				case game.MenuContinue:
+					gs.Menu.CloseMenu()
+				case game.MenuRestart:
+					err = restartGame(gs)
+					if err != nil {
+						panic(err)
+					}
+				case game.MenuQuit:
+					// Set quit flag to exit gracefully
+					gs.ShouldQuit = true
+				}
 			}
 		}
 
-		if !gs.Player.Dead {
-			// Handle movement based on input state
-			// When running (shift/trigger held), allow continuous movement
-			// When not running, use turn-based movement
-			var shouldMove bool
-			if inputState.IsRunning && gs.TurnAnimation <= 0 {
-				shouldMove = true
-			} else if inputState.IsPressed {
-				shouldMove = true
-			}
-
-			if shouldMove {
-				// Right
-				if inputState.MoveRight {
-					gs.PlayerTurn(game.Right)
-					gs.TurnAnimation = 1.0
-					gs.ItemsTurn()
-					gs.UpdateEepers()
-					gs.UpdateBombs()
+		// Only process game input when menu is closed
+		if !gs.Menu.IsOpen {
+			switch gs.Tutorial.Phase {
+			case game.TutorialMove:
+				gs.ShowPopup("Use arrow keys or left stick to move")
+				if inputState.MoveRight || inputState.MoveLeft || inputState.MoveUp || inputState.MoveDown {
+					gs.Tutorial.KnowsHowToMove = true
+					gs.HidePopup()
+					gs.Tutorial.Phase = game.TutorialPlaceBombs
 				}
-				// Left
-				if inputState.MoveLeft {
-					gs.PlayerTurn(game.Left)
-					gs.TurnAnimation = 1.0
-					gs.ItemsTurn()
-					gs.UpdateEepers()
-					gs.UpdateBombs()
-				}
-				// Up
-				if inputState.MoveUp {
-					gs.PlayerTurn(game.Up)
-					gs.TurnAnimation = 1.0
-					gs.ItemsTurn()
-					gs.UpdateEepers()
-					gs.UpdateBombs()
-				}
-				// Down
-				if inputState.MoveDown {
-					gs.PlayerTurn(game.Down)
-					gs.TurnAnimation = 1.0
-					gs.ItemsTurn()
-					gs.UpdateEepers()
-					gs.UpdateBombs()
+			case game.TutorialPlaceBombs:
+				gs.ShowPopup("Press space or A button to plant a bomb")
+				if inputState.PlaceBomb {
+					gs.Tutorial.KnowsHowToPlaceBombs = true
+					gs.HidePopup()
+					gs.Tutorial.Phase = game.TutorialDone
 				}
 			}
 
-			if inputState.PlaceBomb {
-				gs.PlantBomb()
-			}
-		}
+			if !gs.Player.Dead {
+				// Handle movement based on input state
+				// When running (shift/trigger held), allow continuous movement
+				// When not running, use turn-based movement
+				var shouldMove bool
+				if inputState.IsRunning && gs.TurnAnimation <= 0 {
+					shouldMove = true
+				} else if inputState.IsPressed {
+					shouldMove = true
+				}
 
-		gs.UpdateExplosions()
-		ui.UpdatePlayerEyes(&gs.Player)
+				if shouldMove {
+					// Right
+					if inputState.MoveRight {
+						gs.PlayerTurn(game.Right)
+						gs.TurnAnimation = 1.0
+						gs.ItemsTurn()
+						gs.UpdateEepers()
+						gs.UpdateBombs()
+					}
+					// Left
+					if inputState.MoveLeft {
+						gs.PlayerTurn(game.Left)
+						gs.TurnAnimation = 1.0
+						gs.ItemsTurn()
+						gs.UpdateEepers()
+						gs.UpdateBombs()
+					}
+					// Up
+					if inputState.MoveUp {
+						gs.PlayerTurn(game.Up)
+						gs.TurnAnimation = 1.0
+						gs.ItemsTurn()
+						gs.UpdateEepers()
+						gs.UpdateBombs()
+					}
+					// Down
+					if inputState.MoveDown {
+						gs.PlayerTurn(game.Down)
+						gs.TurnAnimation = 1.0
+						gs.ItemsTurn()
+						gs.UpdateEepers()
+						gs.UpdateBombs()
+					}
+				}
 
-		// Update turn animation with faster speed when running (shift/trigger held)
-		if gs.TurnAnimation > 0 {
-			animSpeed := float32(10.0)
-			if inputState.IsRunning {
-				animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
+				if inputState.PlaceBomb {
+					gs.PlantBomb()
+				}
 			}
-			gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
-		}
 
-		if gs.Player.Dead && rl.GetTime() > gs.Player.DeathTime+2.0 {
-			// Restart game logic
-			err = game.LoadGameFromImage("assets/map.png", gs, true)
-			if err != nil {
-				panic(err)
+			gs.UpdateExplosions()
+			ui.UpdatePlayerEyes(&gs.Player)
+
+			// Update turn animation with faster speed when running (shift/trigger held)
+			if gs.TurnAnimation > 0 {
+				animSpeed := float32(10.0)
+				if inputState.IsRunning {
+					animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
+				}
+				gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
 			}
-			gs.Player.Health = 1.0
+
+			if gs.Player.Dead && rl.GetTime() > gs.Player.DeathTime+2.0 {
+				err = restartGame(gs)
+				if err != nil {
+					panic(err)
+				}
+			}
 		}
 
 		// Update camera
@@ -231,6 +302,9 @@ func main() {
 		ui.DrawUI(gs, screenWidth)
 
 		rl.DrawText("Eepers in Go!", 10, 10, 20, rl.LightGray)
+
+		// Draw menu on top of everything
+		gs.Menu.DrawMenu(screenWidth, screenHeight)
 
 		rl.EndDrawing()
 	}

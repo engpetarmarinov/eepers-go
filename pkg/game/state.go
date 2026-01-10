@@ -17,6 +17,8 @@ type State struct {
 	TurnAnimation      float32
 	Camera             rl.Camera2D
 	Tutorial           TutorialState
+	Menu               MenuState
+	ShouldQuit         bool
 	DurationOfLastTurn float64
 }
 
