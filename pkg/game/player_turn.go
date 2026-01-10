@@ -96,6 +96,10 @@ func (gs *State) PlayerTurn(dir Direction) {
 				case entities.ItemBombRefill:
 					// Only pick up if we have space and the item is not on cooldown
 					if gs.Player.Bombs < gs.Player.BombSlots && item.Cooldown <= 0 {
+						// Advance tutorial when picking up first bomb
+						if gs.Player.Bombs == 0 && gs.Tutorial.Phase == TutorialWaitingForBombPick {
+							gs.Tutorial.Phase = TutorialPlaceBombs
+						}
 						gs.Player.Bombs++
 						item.Cooldown = 10 // BOMB_GENERATOR_COOLDOWN
 						rl.PlaySound(audio.BombPickupSound)
