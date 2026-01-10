@@ -15,5 +15,6 @@ type PlayerState struct {
 	Health        float32
 	Dead          bool
 	DeathTime     float64
-	ReachedFather bool // Victory condition - player reached Father
+	ReachedFather bool    // Victory condition - player reached Father
+	VictoryTime   float64 // Time when victory was achieved
 }

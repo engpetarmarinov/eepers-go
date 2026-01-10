@@ -226,14 +226,37 @@ func main() {
 
 			// Check victory condition - player reached Father!
 			if gs.Player.ReachedFather {
-				// Reload level and save checkpoint (victory!)
-				err = game.LoadGameFromImage("assets/map.png", gs, true)
-				if err != nil {
-					panic(err)
+				victoryDuration := rl.GetTime() - gs.Player.VictoryTime
+
+				// Play victory sound once at the start
+				if victoryDuration < 0.1 {
+					rl.PlaySound(audio.VictorySound)
 				}
-				gs.Player.Health = 1.0
-				gs.Player.ReachedFather = false
-				gs.SaveCheckpoint()
+
+				// Keep popup visible during entire animation
+				gs.ShowPopup("YOU FOUND THE FATHER!")
+
+				// Victory animation: zoom in camera over 11 seconds
+				const victoryAnimationTime = 11.0
+				if victoryDuration < victoryAnimationTime {
+					// Smoothly zoom from 1.0 to 3.0 over 3 seconds
+					zoomProgress := float32(victoryDuration / victoryAnimationTime)
+					// Use ease-in-out curve for smooth animation
+					easeProgress := zoomProgress * zoomProgress * (3.0 - 2.0*zoomProgress)
+					gs.Camera.Zoom = 1.0 + easeProgress*2.0 // Zoom from 1.0 to 3.0
+				} else {
+					// Animation complete - reload level
+					err = game.LoadGameFromImage("assets/map.png", gs, true)
+					if err != nil {
+						panic(err)
+					}
+					gs.Player.Health = 1.0
+					gs.Player.ReachedFather = false
+					gs.Player.VictoryTime = 0
+					gs.Camera.Zoom = 1.0 // Reset zoom
+					gs.SaveCheckpoint()
+					gs.HidePopup()
+				}
 			}
 		}
 
@@ -362,9 +385,10 @@ func main() {
 			rl.DrawText("YOU DIED", screenWidth/2-100, screenHeight/2-50, 50, rl.Red)
 		}
 
-		gs.DrawPopup(screenWidth, screenHeight)
-
 		rl.EndMode2D()
+
+		// Draw popup in screen space (not affected by camera zoom)
+		gs.DrawPopup(screenWidth, screenHeight)
 
 		// Draw UI in screen space (outside of Mode2D)
 		ui.DrawUI(gs, screenWidth)

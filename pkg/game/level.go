@@ -114,6 +114,12 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 			case LevelFather:
 				gs.Map[y][x] = world.CellFloor
 				gs.SpawnFather(world.IVector2{X: x, Y: y})
+				//TODO: debug finding the father
+				/*if updatePlayer {
+					gs.Player.Position = world.IVector2{X: x, Y: y - 15}
+					// Initialize eyes target to look down (default direction)
+					gs.Player.EyesTarget = world.IVector2{X: x, Y: y - 15 + 1}
+				}*/
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
 				if updatePlayer {

@@ -126,11 +126,12 @@ func (gs *State) updateFather(eeper *entities.EeperState) {
 
 	// Check if player is touching Father (victory condition!)
 	if gs.isPlayerInAttackRange(eeper) {
-		// Player reached Father - reload level and save checkpoint (victory!)
-		println("Victory! Player reached Father!")
-		// This will trigger level reload in the main game loop
-		gs.Player.ReachedFather = true
-		rl.PlaySound(audio.CheckpointSound)
+		// Player reached Father - trigger victory!
+		if !gs.Player.ReachedFather {
+			// First time reaching - record the time
+			gs.Player.ReachedFather = true
+			gs.Player.VictoryTime = rl.GetTime()
+		}
 		return
 	}
 
