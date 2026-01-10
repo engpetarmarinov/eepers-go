@@ -96,8 +96,8 @@ func (gs *State) Explode(position world.IVector2) {
 				break // Stop if we go out of bounds
 			}
 
-			if gs.Map[pos.Y][pos.X] == world.CellWall {
-				break // Stop if we hit a wall
+			if gs.Map[pos.Y][pos.X] == world.CellWall || gs.Map[pos.Y][pos.X] == world.CellDoor {
+				break // Stop if we hit a wall or a door
 			}
 
 			// If we hit a barricade, flood fill it with explosions and stop
