@@ -11,6 +11,7 @@ var (
 	OpenDoorSound   rl.Sound
 	CheckpointSound rl.Sound
 	PlantBombSound  rl.Sound
+	GuardStepSound  rl.Sound
 	FootstepsSounds []rl.Sound
 	AmbientMusic    rl.Music
 )
@@ -25,6 +26,7 @@ func LoadAudio() {
 	OpenDoorSound = rl.LoadSound("assets/sounds/open-door.wav")
 	CheckpointSound = rl.LoadSound("assets/sounds/checkpoint.ogg")
 	PlantBombSound = rl.LoadSound("assets/sounds/plant-bomb.wav")
+	GuardStepSound = rl.LoadSound("assets/sounds/guard-step.ogg")
 
 	FootstepsSounds = make([]rl.Sound, 4)
 	FootstepsSounds[0] = rl.LoadSound("assets/sounds/footsteps.mp3")
@@ -43,6 +45,7 @@ func UnloadAudio() {
 	rl.UnloadSound(OpenDoorSound)
 	rl.UnloadSound(CheckpointSound)
 	rl.UnloadSound(PlantBombSound)
+	rl.UnloadSound(GuardStepSound)
 	for _, s := range FootstepsSounds {
 		rl.UnloadSound(s)
 	}

@@ -23,7 +23,7 @@ type EeperState struct {
 	PrevEyes       EyesKind
 	Eyes           EyesKind
 	Size           world.IVector2
-	Path           [][]int
+	Path           [][]int // Distance map for pathfinding (-1 = unreachable, 0 = player position, >0 = steps to player)
 	Damaged        bool
 	Health         float32
 	AttackCooldown int

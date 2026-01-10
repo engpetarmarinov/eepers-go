@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/engpetarmarinov/eepers-go/pkg/entities"
@@ -73,4 +74,89 @@ func UpdatePlayerEyes(player *entities.PlayerState) {
 	} else {
 		player.Eyes = entities.EyesOpen
 	}
+}
+
+// DrawEeperEyes draws an eeper's eyes with direction offset and interpolation.
+func DrawEeperEyes(eeper entities.EeperState, interpPos rl.Vector2, turnAnimation float32) {
+	eyeColor := palette.Colors["COLOR_EYES"]
+
+	// Eeper eyes are larger and positioned differently than player eyes
+	size := rl.NewVector2(18, 40) // Larger eyes for eepers
+	eyeSize := rl.NewVector2(size.X, size.Y)
+
+	// Calculate eye offset based on looking direction
+	lookDir := rl.NewVector2(
+		float32(eeper.EyesTarget.X-eeper.Position.X),
+		float32(eeper.EyesTarget.Y-eeper.Position.Y),
+	)
+
+	// Normalize and scale the look direction for eye offset
+	length := float32(math.Sqrt(float64(lookDir.X*lookDir.X + lookDir.Y*lookDir.Y)))
+	eyeOffset := rl.NewVector2(0, 0)
+	if length > 0.01 {
+		eyeOffset = rl.NewVector2(
+			(lookDir.X/length)*4.0, // Eye movement offset
+			(lookDir.Y/length)*4.0,
+		)
+	}
+
+	// Position eyes based on eeper size - centered horizontally, upper portion vertically
+	eeperCenterX := float32(eeper.Size.X) * 25.0 // Center of eeper
+	eeperEyeY := float32(eeper.Size.Y) * 15.0    // Upper portion for eyes
+
+	eyeSpacing := float32(20.0) // Space between eyes
+	leftEyeOffset := rl.NewVector2(eeperCenterX-eyeSpacing, eeperEyeY)
+	rightEyeOffset := rl.NewVector2(eeperCenterX+eyeSpacing, eeperEyeY)
+
+	leftEyePos := rl.Vector2Add(rl.Vector2Add(interpPos, leftEyeOffset), eyeOffset)
+	rightEyePos := rl.Vector2Add(rl.Vector2Add(interpPos, rightEyeOffset), eyeOffset)
+
+	drawEye(leftEyePos, eyeSize, entities.EyesMeshes[eeper.Eyes][0], eyeColor)
+	drawEye(rightEyePos, eyeSize, entities.EyesMeshes[eeper.Eyes][1], eyeColor)
+}
+
+// DrawEeperHealthBar draws a health bar for an eeper
+func DrawEeperHealthBar(eeper entities.EeperState, interpPos rl.Vector2, size rl.Vector2) {
+	if eeper.Health >= 1.0 {
+		return // Don't draw health bar when at full health
+	}
+
+	barWidth := size.X
+	barHeight := float32(5.0)
+	barPos := rl.NewVector2(interpPos.X, interpPos.Y-barHeight-2)
+
+	// Background (dark)
+	rl.DrawRectangleV(barPos, rl.NewVector2(barWidth, barHeight), rl.NewColor(40, 40, 40, 200))
+
+	// Health fill (green to red based on health)
+	healthColor := rl.NewColor(
+		uint8(255*(1.0-eeper.Health)),
+		uint8(255*eeper.Health),
+		0,
+		255,
+	)
+	rl.DrawRectangleV(barPos, rl.NewVector2(barWidth*eeper.Health, barHeight), healthColor)
+}
+
+// DrawEeperCooldownBubble draws a countdown bubble above an eeper
+func DrawEeperCooldownBubble(eeper entities.EeperState, interpPos rl.Vector2, size rl.Vector2, backgroundColor rl.Color) {
+	bubbleRadius := float32(30.0)
+	bubbleCenter := rl.NewVector2(
+		interpPos.X+size.X*0.5,
+		interpPos.Y-bubbleRadius*2.0,
+	)
+
+	// Draw bubble circle
+	rl.DrawCircleV(bubbleCenter, bubbleRadius, backgroundColor)
+
+	// Draw countdown number
+	countdownText := fmt.Sprintf("%d", eeper.AttackCooldown)
+	fontSize := int32(40)
+	textWidth := rl.MeasureText(countdownText, fontSize)
+	textPos := rl.NewVector2(
+		bubbleCenter.X-float32(textWidth)/2,
+		bubbleCenter.Y-float32(fontSize)/2,
+	)
+
+	rl.DrawText(countdownText, int32(textPos.X), int32(textPos.Y), fontSize, rl.Black)
 }

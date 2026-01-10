@@ -104,8 +104,9 @@ func (gs *State) PlayerTurn(dir Direction) {
 					gs.Player.BombSlots++
 					item.Kind = entities.ItemNone // Mark as collected
 				case entities.ItemCheckpoint:
-					// Handle checkpoint logic here
-					item.Kind = entities.ItemNone // Mark as collected
+					// Mark as collected first, then save state
+					item.Kind = entities.ItemNone
+					gs.SaveCheckpoint()
 					rl.PlaySound(audio.CheckpointSound)
 				}
 			}

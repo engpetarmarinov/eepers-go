@@ -45,6 +45,9 @@ func restartGame(gs *game.State) error {
 		Phase: game.TutorialMove,
 	}
 
+	// Save new checkpoint
+	gs.SaveCheckpoint()
+
 	return nil
 }
 
@@ -78,6 +81,9 @@ func main() {
 	gs.Player.BombSlots = 1
 	gs.Camera.Zoom = 1.0
 	gs.Menu = game.NewMenuState()
+
+	// Save initial checkpoint
+	gs.SaveCheckpoint()
 
 	rl.SetTargetFPS(60)
 
@@ -199,10 +205,8 @@ func main() {
 			}
 
 			if gs.Player.Dead && rl.GetTime() > gs.Player.DeathTime+2.0 {
-				err = restartGame(gs)
-				if err != nil {
-					panic(err)
-				}
+				// Restore from last checkpoint
+				gs.RestoreCheckpoint()
 			}
 		}
 
@@ -262,6 +266,10 @@ func main() {
 		}
 
 		for _, eeper := range gs.Eepers {
+			if eeper.Dead {
+				continue
+			}
+
 			var color rl.Color
 			switch eeper.Kind {
 			case entities.EeperGuard:
@@ -273,7 +281,30 @@ func main() {
 			case entities.EeperFather:
 				color = palette.Colors["COLOR_FATHER"]
 			}
-			rl.DrawRectangle(int32(eeper.Position.X*50), int32(eeper.Position.Y*50), int32(eeper.Size.X*50), int32(eeper.Size.Y*50), color)
+
+			// Interpolate eeper position for smooth movement
+			eeperPrevPos := rl.NewVector2(float32(eeper.PrevPosition.X*50), float32(eeper.PrevPosition.Y*50))
+			eeperPos := rl.NewVector2(float32(eeper.Position.X*50), float32(eeper.Position.Y*50))
+			eeperInterpPos := rl.Vector2Lerp(eeperPos, eeperPrevPos, gs.TurnAnimation)
+			eeperSize := rl.NewVector2(float32(eeper.Size.X*50), float32(eeper.Size.Y*50))
+
+			// Draw eeper body
+			rl.DrawRectangleV(eeperInterpPos, eeperSize, color)
+
+			// Draw health bar for guards and mothers
+			if eeper.Kind == entities.EeperGuard || eeper.Kind == entities.EeperMother {
+				ui.DrawEeperHealthBar(eeper, eeperInterpPos, eeperSize)
+
+				// Draw cooldown bubble only when the eeper can see the player (path >= 0)
+				if eeper.Path != nil && eeper.Position.Y >= 0 && eeper.Position.Y < len(eeper.Path) &&
+					eeper.Position.X >= 0 && eeper.Position.X < len(eeper.Path[0]) &&
+					eeper.Path[eeper.Position.Y][eeper.Position.X] >= 0 {
+					ui.DrawEeperCooldownBubble(eeper, eeperInterpPos, eeperSize, color)
+				}
+			}
+
+			// Draw eeper eyes
+			ui.DrawEeperEyes(eeper, eeperInterpPos, gs.TurnAnimation)
 		}
 
 		playerPrevPos := rl.NewVector2(float32(gs.Player.PrevPosition.X*50), float32(gs.Player.PrevPosition.Y*50))

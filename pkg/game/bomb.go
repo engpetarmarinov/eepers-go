@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	bombCountdown = 5
+	bombCountdown   = 5
+	explosionDamage = 0.45
 )
 
 // PlantBomb creates a new bomb at the player's position.
@@ -25,6 +26,12 @@ func (gs *State) PlantBomb() {
 
 // UpdateBombs updates the state of all bombs.
 func (gs *State) UpdateBombs() {
+	// Reset damaged flag for all eepers at the start of the turn
+	for i := range gs.Eepers {
+		gs.Eepers[i].Damaged = false
+	}
+
+	// Update bomb countdowns and explode if needed
 	for i := len(gs.Bombs) - 1; i >= 0; i-- {
 		bomb := &gs.Bombs[i]
 		bomb.Countdown--
@@ -32,6 +39,35 @@ func (gs *State) UpdateBombs() {
 		if bomb.Countdown == 0 {
 			gs.Explode(bomb.Position)
 			gs.Bombs = append(gs.Bombs[:i], gs.Bombs[i+1:]...)
+		}
+	}
+
+	// Process damage to eepers after all explosions
+	for i := range gs.Eepers {
+		eeper := &gs.Eepers[i]
+		if !eeper.Dead && eeper.Damaged {
+			switch eeper.Kind {
+			case entities.EeperGuard:
+				eeper.Eyes = entities.EyesCringe
+				eeper.Health -= explosionDamage
+				if eeper.Health <= 0 {
+					eeper.Dead = true
+				}
+			case entities.EeperMother:
+				// Mother spawns 4 guards when killed
+				position := eeper.Position
+				eeper.Dead = true
+				gs.SpawnGuard(world.IVector2{X: position.X, Y: position.Y})
+				gs.SpawnGuard(world.IVector2{X: position.X + 4, Y: position.Y})
+				gs.SpawnGuard(world.IVector2{X: position.X, Y: position.Y + 4})
+				gs.SpawnGuard(world.IVector2{X: position.X + 4, Y: position.Y + 4})
+			case entities.EeperGnome:
+				// Gnome drops a key when killed
+				eeper.Dead = true
+				gs.AllocateItem(eeper.Position, entities.ItemKey)
+			case entities.EeperFather:
+				// Father is immune to explosions
+			}
 		}
 	}
 }
@@ -45,6 +81,9 @@ func (gs *State) Explode(position world.IVector2) {
 		InitialTimer: 20,
 	})
 	gs.Map[position.Y][position.X] = world.CellExplosion
+
+	// Damage eepers and player at explosion position
+	gs.damageAtPosition(position)
 
 	// And in all four directions
 	for _, dir := range Directions {
@@ -73,10 +112,35 @@ func (gs *State) Explode(position world.IVector2) {
 				InitialTimer: 20,
 			})
 			gs.Map[pos.Y][pos.X] = world.CellExplosion
+
+			// Damage eepers and player at this position
+			gs.damageAtPosition(pos)
 		}
 	}
 
 	rl.PlaySound(audio.BlastSound)
+}
+
+// damageAtPosition damages player and eepers at the given position
+func (gs *State) damageAtPosition(pos world.IVector2) {
+	// Damage player if at this position
+	if gs.Player.Position.X == pos.X && gs.Player.Position.Y == pos.Y {
+		gs.KillPlayer()
+	}
+
+	// Damage eepers that overlap with this position
+	for i := range gs.Eepers {
+		eeper := &gs.Eepers[i]
+		if !eeper.Dead && gs.isInsideRect(eeper.Position, eeper.Size, pos) {
+			eeper.Damaged = true
+		}
+	}
+}
+
+// isInsideRect checks if a point is inside a rectangle
+func (gs *State) isInsideRect(rectPos world.IVector2, rectSize world.IVector2, point world.IVector2) bool {
+	return point.X >= rectPos.X && point.X < rectPos.X+rectSize.X &&
+		point.Y >= rectPos.Y && point.Y < rectPos.Y+rectSize.Y
 }
 
 // FloodFill fills all connected cells of the same type with a new cell type.

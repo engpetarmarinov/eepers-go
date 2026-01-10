@@ -103,6 +103,18 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 			case LevelKey:
 				gs.Map[y][x] = world.CellFloor
 				gs.AllocateItem(world.IVector2{X: x, Y: y}, entities.ItemKey)
+			case LevelGuard:
+				gs.Map[y][x] = world.CellFloor
+				gs.SpawnGuard(world.IVector2{X: x, Y: y})
+			case LevelMother:
+				gs.Map[y][x] = world.CellFloor
+				// Mother eepers will be implemented later
+			case LevelGnome:
+				gs.Map[y][x] = world.CellFloor
+				// Gnome eepers will be implemented later
+			case LevelFather:
+				gs.Map[y][x] = world.CellFloor
+				// Father eepers will be implemented later
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
 				if updatePlayer {
