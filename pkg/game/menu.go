@@ -90,14 +90,33 @@ func (ms *MenuState) DrawMenu(screenWidth, screenHeight int32) {
 		return
 	}
 
-	// Semi-transparent overlay
-	rl.DrawRectangle(0, 0, screenWidth, screenHeight, rl.Fade(rl.Black, 0.7))
+	currentWidth := int32(rl.GetScreenWidth())
+	currentHeight := int32(rl.GetScreenHeight())
 
-	// Menu box dimensions
+	// Get render dimensions (which might differ from screen dimensions on HiDPI/Retina)
+	renderWidth := int32(rl.GetRenderWidth())
+	renderHeight := int32(rl.GetRenderHeight())
+
+	// Use the larger of the two to ensure full coverage
+	overlayWidth := currentWidth
+	overlayHeight := currentHeight
+	if renderWidth > currentWidth {
+		overlayWidth = renderWidth
+	}
+	if renderHeight > currentHeight {
+		overlayHeight = renderHeight
+	}
+
+	// Semi-transparent overlay covering the entire screen
+	// Use DrawRectangleRec for precise full-screen coverage
+	fullScreenRect := rl.NewRectangle(0, 0, float32(overlayWidth), float32(overlayHeight))
+	rl.DrawRectangleRec(fullScreenRect, rl.Fade(rl.Black, 0.7))
+
+	// Menu box dimensions - use current screen dimensions for centering
 	menuWidth := int32(400)
 	menuHeight := int32(300)
-	menuX := (screenWidth - menuWidth) / 2
-	menuY := (screenHeight - menuHeight) / 2
+	menuX := (currentWidth - menuWidth) / 2
+	menuY := (currentHeight - menuHeight) / 2
 
 	// Draw menu background
 	rl.DrawRectangle(menuX, menuY, menuWidth, menuHeight, palette.Colors["COLOR_BACKGROUND"])
