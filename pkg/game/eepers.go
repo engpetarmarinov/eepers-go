@@ -47,10 +47,9 @@ func (gs *State) updateGuard(eeper *entities.EeperState) {
 		return
 	}
 
-	// Set previous position to current position at START of turn (before any movement)
-	// This prevents wobbling - PrevPosition only changes when guard actually moves
-	eeper.PrevPosition = eeper.Position
-	eeper.PrevEyes = eeper.Eyes
+	// Store the current position before any movement
+	oldPosition := eeper.Position
+	oldEyes := eeper.Eyes
 
 	// Recompute the distance map for this guard
 	gs.recomputePathForEeper(eeper)
@@ -62,6 +61,8 @@ func (gs *State) updateGuard(eeper *entities.EeperState) {
 	if currentDist == 0 {
 		gs.KillPlayer()
 		eeper.Eyes = entities.EyesSurprised
+		eeper.PrevPosition = oldPosition
+		eeper.PrevEyes = oldEyes
 		return
 	}
 
@@ -109,6 +110,11 @@ func (gs *State) updateGuard(eeper *entities.EeperState) {
 			eeper.Health = 1.0
 		}
 	}
+
+	// Set previous position AFTER all movement and state changes
+	// This ensures interpolation works correctly
+	eeper.PrevPosition = oldPosition
+	eeper.PrevEyes = oldEyes
 }
 
 // updateMother updates a Mother eeper - behaves exactly like guards but larger
@@ -183,17 +189,33 @@ func (gs *State) moveGuardTowardPlayer(eeper *entities.EeperState) bool {
 	for _, dir := range directions {
 		pos := eeper.Position
 
-		// Keep moving in this direction while we can stand there,
-		// check canStand at CURRENT pos, THEN move, THEN check distance
-		for gs.eeperCanStandHere(pos, eeper) {
-			pos = world.IVector2{X: pos.X + dir.X, Y: pos.Y + dir.Y}
+		// Keep moving in this direction, checking each step
+		for {
+			// Try to move one step in this direction
+			nextPos := world.IVector2{X: pos.X + dir.X, Y: pos.Y + dir.Y}
 
-			// Check if this new position is valid and has the right distance
-			if gs.WithinMap(pos) && eeper.Path[pos.Y][pos.X] == currentDist-1 {
-				// Double-check we can actually stand at this final position
-				if gs.eeperCanStandHere(pos, eeper) {
-					availablePositions = append(availablePositions, pos)
-				}
+			// Check if we're out of bounds
+			if !gs.WithinMap(nextPos) {
+				break
+			}
+
+			// Check if we can stand at this new position
+			if !gs.eeperCanStandHere(nextPos, eeper) {
+				break
+			}
+
+			// Move to the new position
+			pos = nextPos
+
+			// Check if this position has the right distance (one step closer to player)
+			if eeper.Path[pos.Y][pos.X] == currentDist-1 {
+				// We found a valid position that's closer to the player
+				availablePositions = append(availablePositions, pos)
+				break
+			}
+
+			// If we reached the player position (distance 0), stop
+			if eeper.Path[pos.Y][pos.X] == 0 {
 				break
 			}
 		}
@@ -273,9 +295,9 @@ func (gs *State) updateGnome(eeper *entities.EeperState) {
 		return
 	}
 
-	// Set previous position at START of turn
-	eeper.PrevPosition = eeper.Position
-	eeper.PrevEyes = eeper.Eyes
+	// Store the current position before any movement
+	oldPosition := eeper.Position
+	oldEyes := eeper.Eyes
 
 	// Recompute path for gnome (they use different pathfinding params)
 	gs.recomputePathForGnome(eeper)
@@ -296,6 +318,10 @@ func (gs *State) updateGnome(eeper *entities.EeperState) {
 			Y: eeper.Position.Y + eeper.Size.Y,
 		}
 	}
+
+	// Set previous position AFTER all movement and state changes
+	eeper.PrevPosition = oldPosition
+	eeper.PrevEyes = oldEyes
 }
 
 // moveGnomeAwayFromPlayer moves the gnome to a position farther from the player

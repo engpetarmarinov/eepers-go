@@ -225,15 +225,6 @@ func main() {
 			gs.UpdateExplosions()
 			ui.UpdatePlayerEyes(&gs.Player)
 
-			// Update turn animation with faster speed when running (shift/trigger held)
-			if gs.TurnAnimation > 0 {
-				animSpeed := float32(10.0)
-				if inputState.IsRunning {
-					animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
-				}
-				gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
-			}
-
 			if gs.Player.Dead && rl.GetTime() > gs.Player.DeathTime+2.0 {
 				// Restore from last checkpoint
 				gs.RestoreCheckpoint()
@@ -412,5 +403,19 @@ func main() {
 		gs.Menu.DrawMenu(screenWidth, screenHeight)
 
 		rl.EndDrawing()
+
+		// Update turn animation AFTER rendering to ensure first frame shows correct positions
+		// Update with faster speed when running (shift/trigger held)
+		if gs.TurnAnimation > 0 {
+			animSpeed := float32(10.0)
+			if inputState.IsRunning {
+				animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
+			}
+			gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
+			// Clamp to 0 to prevent negative values that cause extrapolation
+			if gs.TurnAnimation < 0 {
+				gs.TurnAnimation = 0
+			}
+		}
 	}
 }
