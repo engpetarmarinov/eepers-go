@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/engpetarmarinov/eepers-go/pkg/audio"
 	"github.com/engpetarmarinov/eepers-go/pkg/entities"
@@ -51,7 +54,31 @@ func restartGame(gs *game.State) error {
 	return nil
 }
 
+// setupResourcePath changes the working directory to the Resources folder
+// when running from a macOS .app bundle
+func setupResourcePath() {
+	if runtime.GOOS == "darwin" {
+		exePath, err := os.Executable()
+		if err != nil {
+			return
+		}
+
+		// Check if we're running from a .app bundle
+		// Executable path will be: Eepers.app/Contents/MacOS/eepers
+		exeDir := filepath.Dir(exePath)
+		if filepath.Base(exeDir) == "MacOS" {
+			resourcesPath := filepath.Join(filepath.Dir(exeDir), "Resources")
+			if _, err := os.Stat(resourcesPath); err == nil {
+				_ = os.Chdir(resourcesPath)
+			}
+		}
+	}
+}
+
 func main() {
+	// Setup resource path for macOS .app bundles
+	setupResourcePath()
+
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 	screenWidth := int32(rl.GetMonitorWidth(0))
 	screenHeight := int32(rl.GetMonitorHeight(0))
