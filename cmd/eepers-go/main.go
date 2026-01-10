@@ -85,6 +85,9 @@ func main() {
 	// Save initial checkpoint
 	gs.SaveCheckpoint()
 
+	// Start playing ambient music
+	rl.PlayMusicStream(audio.AmbientMusic)
+
 	rl.SetTargetFPS(60)
 
 	for !rl.WindowShouldClose() && !gs.ShouldQuit {
@@ -93,9 +96,18 @@ func main() {
 		gs.Camera.Offset = rl.NewVector2(float32(screenWidth/2), float32(screenHeight/2))
 		inputState := input.GetInput()
 
+		// Update music stream
+		rl.UpdateMusicStream(audio.AmbientMusic)
+
 		// Handle menu toggle
 		if inputState.MenuToggle {
 			gs.Menu.ToggleMenu()
+			// Pause/resume music based on menu state
+			if gs.Menu.IsOpen {
+				rl.PauseMusicStream(audio.AmbientMusic)
+			} else {
+				rl.ResumeMusicStream(audio.AmbientMusic)
+			}
 		}
 
 		// Handle menu input when menu is open
@@ -110,11 +122,14 @@ func main() {
 				switch gs.Menu.SelectedOption {
 				case game.MenuContinue:
 					gs.Menu.CloseMenu()
+					rl.ResumeMusicStream(audio.AmbientMusic)
 				case game.MenuRestart:
 					err = restartGame(gs)
 					if err != nil {
 						panic(err)
 					}
+					gs.Menu.CloseMenu()
+					rl.ResumeMusicStream(audio.AmbientMusic)
 				case game.MenuQuit:
 					// Set quit flag to exit gracefully
 					gs.ShouldQuit = true
