@@ -31,7 +31,7 @@ func (gs *State) UpdateEepers() {
 		case entities.EeperGuard:
 			gs.updateGuard(eeper)
 		case entities.EeperMother:
-			// To be implemented
+			gs.updateMother(eeper)
 		case entities.EeperGnome:
 			gs.updateGnome(eeper)
 		case entities.EeperFather:
@@ -108,6 +108,13 @@ func (gs *State) updateGuard(eeper *entities.EeperState) {
 			eeper.Health = 1.0
 		}
 	}
+}
+
+// updateMother updates a Mother eeper - behaves exactly like guards but larger
+func (gs *State) updateMother(eeper *entities.EeperState) {
+	// Mother eepers behave identically to guards, just with different size
+	// Reuse the guard update logic
+	gs.updateGuard(eeper)
 }
 
 func (gs *State) moveGuardTowardPlayer(eeper *entities.EeperState) bool {
@@ -370,4 +377,38 @@ func (gs *State) SpawnGnome(position world.IVector2) {
 	}
 
 	gs.Eepers = append(gs.Eepers, gnome)
+}
+
+// SpawnMother creates a new Mother eeper at the specified position
+func (gs *State) SpawnMother(position world.IVector2) {
+	size := world.IVector2{X: 7, Y: 7} // Mothers are 7x7 (large)
+
+	// Initialize path map with correct dimensions
+	height := len(gs.Map)
+	width := len(gs.Map[0])
+	path := make([][]int, height)
+	for i := range path {
+		path[i] = make([]int, width)
+		for j := range path[i] {
+			path[i][j] = -1
+		}
+	}
+
+	mother := entities.EeperState{
+		Kind:           entities.EeperMother,
+		Dead:           false,
+		Position:       position,
+		PrevPosition:   position,
+		EyesAngle:      0,
+		EyesTarget:     world.IVector2{X: position.X + size.X/2, Y: position.Y + size.Y},
+		PrevEyes:       entities.EyesClosed,
+		Eyes:           entities.EyesClosed,
+		Size:           size,
+		Path:           path,
+		Damaged:        false,
+		Health:         1.0,
+		AttackCooldown: guardAttackCooldown,
+	}
+
+	gs.Eepers = append(gs.Eepers, mother)
 }

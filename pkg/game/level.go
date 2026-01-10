@@ -107,7 +107,7 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 				gs.SpawnGuard(world.IVector2{X: x, Y: y})
 			case LevelMother:
 				gs.Map[y][x] = world.CellFloor
-				// Mother eepers will be implemented later
+				gs.SpawnMother(world.IVector2{X: x, Y: y})
 			case LevelGnome:
 				gs.Map[y][x] = world.CellFloor
 				gs.SpawnGnome(world.IVector2{X: x, Y: y})
@@ -116,8 +116,6 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 				// Father eepers will be implemented later
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
-				//TODO: debug
-				println("player spawn at", x, y)
 				if updatePlayer {
 					gs.Player.Position = world.IVector2{X: x, Y: y}
 					// Initialize eyes target to look down (default direction)
