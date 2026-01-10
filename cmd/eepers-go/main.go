@@ -56,7 +56,7 @@ func main() {
 	screenWidth := int32(rl.GetMonitorWidth(0))
 	screenHeight := int32(rl.GetMonitorHeight(0))
 
-	rl.InitWindow(screenWidth, screenHeight, "Eepers - Go Edition")
+	rl.InitWindow(screenWidth, screenHeight, "Eepers Go")
 	rl.ToggleFullscreen()
 
 	// Disable ESC key as default exit key so we can use it for menu
@@ -303,8 +303,18 @@ func main() {
 			eeperInterpPos := rl.Vector2Lerp(eeperPos, eeperPrevPos, gs.TurnAnimation)
 			eeperSize := rl.NewVector2(float32(eeper.Size.X*50), float32(eeper.Size.Y*50))
 
+			// Gnomes are rendered smaller (70% size) and centered
+			renderPos := eeperInterpPos
+			renderSize := eeperSize
+			if eeper.Kind == entities.EeperGnome {
+				gnomeRatio := float32(0.7)
+				renderSize = rl.NewVector2(eeperSize.X*gnomeRatio, eeperSize.Y*gnomeRatio)
+				offset := rl.NewVector2((eeperSize.X-renderSize.X)*0.5, (eeperSize.Y-renderSize.Y)*0.5)
+				renderPos = rl.Vector2Add(eeperInterpPos, offset)
+			}
+
 			// Draw eeper body
-			rl.DrawRectangleV(eeperInterpPos, eeperSize, color)
+			rl.DrawRectangleV(renderPos, renderSize, color)
 
 			// Draw health bar for guards and mothers
 			if eeper.Kind == entities.EeperGuard || eeper.Kind == entities.EeperMother {
@@ -318,8 +328,8 @@ func main() {
 				}
 			}
 
-			// Draw eeper eyes
-			ui.DrawEeperEyes(eeper, eeperInterpPos, gs.TurnAnimation)
+			// Draw eeper eyes (use renderPos and renderSize for gnomes)
+			ui.DrawEeperEyes(eeper, renderPos, gs.TurnAnimation)
 		}
 
 		playerPrevPos := rl.NewVector2(float32(gs.Player.PrevPosition.X*50), float32(gs.Player.PrevPosition.Y*50))

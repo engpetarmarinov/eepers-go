@@ -15,6 +15,8 @@ const (
 	guardStepsLimit       = 100 // How many pathfinding steps to search
 	guardStepLengthLimit  = 100 // How far to look in each direction during pathfinding
 	guardTurnRegeneration = 0.01
+	gnomeStepsLimit       = 9 // Gnomes can detect player up to 9 steps away
+	gnomeStepLengthLimit  = 1 // Gnomes move only 1 cell at a time
 )
 
 // UpdateEepers updates the state of all eepers.
@@ -31,7 +33,7 @@ func (gs *State) UpdateEepers() {
 		case entities.EeperMother:
 			// To be implemented
 		case entities.EeperGnome:
-			// To be implemented
+			gs.updateGnome(eeper)
 		case entities.EeperFather:
 			// To be implemented
 		}
@@ -210,6 +212,99 @@ func (gs *State) isPlayerInAttackRange(eeper *entities.EeperState) bool {
 		gs.Player.Position.Y >= eeper.Position.Y && gs.Player.Position.Y < eeper.Position.Y+eeper.Size.Y
 }
 
+// updateGnome updates a gnome eeper that flees from the player
+func (gs *State) updateGnome(eeper *entities.EeperState) {
+	if eeper.Health <= 0 {
+		eeper.Dead = true
+		return
+	}
+
+	// Set previous position at START of turn
+	eeper.PrevPosition = eeper.Position
+	eeper.PrevEyes = eeper.Eyes
+
+	// Recompute path for gnome (they use different pathfinding params)
+	gs.recomputePathForGnome(eeper)
+
+	// Check if player is reachable
+	currentDist := eeper.Path[eeper.Position.Y][eeper.Position.X]
+
+	if currentDist >= 0 {
+		// Player is reachable - gnome flees (moves to higher distance)
+		gs.moveGnomeAwayFromPlayer(eeper)
+		eeper.Eyes = entities.EyesOpen
+		eeper.EyesTarget = gs.Player.Position
+	} else {
+		// Player not reachable - gnome sleeps
+		eeper.Eyes = entities.EyesClosed
+		eeper.EyesTarget = world.IVector2{
+			X: eeper.Position.X + eeper.Size.X/2,
+			Y: eeper.Position.Y + eeper.Size.Y,
+		}
+	}
+}
+
+// moveGnomeAwayFromPlayer moves the gnome to a position farther from the player
+func (gs *State) moveGnomeAwayFromPlayer(eeper *entities.EeperState) {
+	currentDist := eeper.Path[eeper.Position.Y][eeper.Position.X]
+	if currentDist < 0 {
+		return
+	}
+
+	// Find all adjacent positions with HIGHER distance (fleeing)
+	directions := []world.IVector2{
+		{X: 0, Y: 1},
+		{X: 0, Y: -1},
+		{X: 1, Y: 0},
+		{X: -1, Y: 0},
+	}
+	var availablePositions []world.IVector2
+
+	for _, dir := range directions {
+		newPos := eeper.Position.Add(dir)
+
+		// Check if position is valid
+		if !gs.WithinMap(newPos) {
+			continue
+		}
+
+		// Check if it's a floor cell
+		if gs.Map[newPos.Y][newPos.X] != world.CellFloor {
+			continue
+		}
+
+		// Gnomes flee - move to positions with HIGHER distance
+		if eeper.Path[newPos.Y][newPos.X] > currentDist {
+			availablePositions = append(availablePositions, newPos)
+		}
+	}
+
+	// If found positions to flee to, pick one randomly
+	if len(availablePositions) > 0 {
+		eeper.Position = availablePositions[rand.Intn(len(availablePositions))]
+	}
+}
+
+// recomputePathForGnome computes distance map for gnome (different params than guards)
+func (gs *State) recomputePathForGnome(eeper *entities.EeperState) {
+	canStand := func(p pathfinding.Point) bool {
+		pos := world.IVector2{X: p.X, Y: p.Y}
+		if !gs.WithinMap(pos) {
+			return false
+		}
+		return gs.Map[pos.Y][pos.X] == world.CellFloor
+	}
+
+	eeper.Path = pathfinding.ComputeDistanceMap(
+		gs.Map,
+		pathfinding.Point{X: gs.Player.Position.X, Y: gs.Player.Position.Y},
+		pathfinding.Point{X: eeper.Size.X, Y: eeper.Size.Y},
+		gnomeStepsLimit,      // 9 steps
+		gnomeStepLengthLimit, // 1 cell per step
+		canStand,
+	)
+}
+
 // SpawnGuard creates a new guard at the specified position
 func (gs *State) SpawnGuard(position world.IVector2) {
 	size := world.IVector2{X: 3, Y: 3}
@@ -242,4 +337,37 @@ func (gs *State) SpawnGuard(position world.IVector2) {
 	}
 
 	gs.Eepers = append(gs.Eepers, guard)
+}
+
+// SpawnGnome creates a new gnome at the specified position
+func (gs *State) SpawnGnome(position world.IVector2) {
+	size := world.IVector2{X: 1, Y: 1} // Gnomes are 1x1
+
+	// Initialize path map with correct dimensions
+	height := len(gs.Map)
+	width := len(gs.Map[0])
+	path := make([][]int, height)
+	for i := range path {
+		path[i] = make([]int, width)
+		for j := range path[i] {
+			path[i][j] = -1
+		}
+	}
+
+	gnome := entities.EeperState{
+		Kind:         entities.EeperGnome,
+		Dead:         false,
+		Position:     position,
+		PrevPosition: position,
+		EyesAngle:    0,
+		EyesTarget:   world.IVector2{X: position.X + size.X/2, Y: position.Y + size.Y},
+		PrevEyes:     entities.EyesClosed,
+		Eyes:         entities.EyesClosed,
+		Size:         size,
+		Path:         path,
+		Damaged:      false,
+		Health:       1.0, // Gnomes start alive, die in one explosion hit
+	}
+
+	gs.Eepers = append(gs.Eepers, gnome)
 }

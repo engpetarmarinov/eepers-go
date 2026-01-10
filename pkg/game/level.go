@@ -68,7 +68,6 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 	for i := range gs.Map {
 		gs.Map[i] = make([]world.Cell, width)
 	}
-
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			r, g, b, a := img.At(x, y).RGBA()
@@ -111,12 +110,14 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 				// Mother eepers will be implemented later
 			case LevelGnome:
 				gs.Map[y][x] = world.CellFloor
-				// Gnome eepers will be implemented later
+				gs.SpawnGnome(world.IVector2{X: x, Y: y})
 			case LevelFather:
 				gs.Map[y][x] = world.CellFloor
 				// Father eepers will be implemented later
 			case LevelPlayer:
 				gs.Map[y][x] = world.CellFloor
+				//TODO: debug
+				println("player spawn at", x, y)
 				if updatePlayer {
 					gs.Player.Position = world.IVector2{X: x, Y: y}
 					// Initialize eyes target to look down (default direction)
