@@ -6,6 +6,7 @@ import (
 	"github.com/engpetarmarinov/eepers-go/pkg/audio"
 	"github.com/engpetarmarinov/eepers-go/pkg/entities"
 	"github.com/engpetarmarinov/eepers-go/pkg/game"
+	"github.com/engpetarmarinov/eepers-go/pkg/input"
 	"github.com/engpetarmarinov/eepers-go/pkg/palette"
 	"github.com/engpetarmarinov/eepers-go/pkg/ui"
 	"github.com/engpetarmarinov/eepers-go/pkg/world"
@@ -44,18 +45,18 @@ func main() {
 		screenWidth := int32(rl.GetScreenWidth())
 		screenHeight := int32(rl.GetScreenHeight())
 		gs.Camera.Offset = rl.NewVector2(float32(screenWidth/2), float32(screenHeight/2))
-		// Update
+		inputState := input.GetInput()
 		switch gs.Tutorial.Phase {
 		case game.TutorialMove:
-			gs.ShowPopup("Use arrow keys to move")
-			if rl.IsKeyPressed(rl.KeyRight) || rl.IsKeyPressed(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyUp) || rl.IsKeyPressed(rl.KeyDown) {
+			gs.ShowPopup("Use arrow keys or left stick to move")
+			if inputState.MoveRight || inputState.MoveLeft || inputState.MoveUp || inputState.MoveDown {
 				gs.Tutorial.KnowsHowToMove = true
 				gs.HidePopup()
 				gs.Tutorial.Phase = game.TutorialPlaceBombs
 			}
 		case game.TutorialPlaceBombs:
-			gs.ShowPopup("Press space to plant a bomb")
-			if rl.IsKeyPressed(rl.KeySpace) {
+			gs.ShowPopup("Press space or A button to plant a bomb")
+			if inputState.PlaceBomb {
 				gs.Tutorial.KnowsHowToPlaceBombs = true
 				gs.HidePopup()
 				gs.Tutorial.Phase = game.TutorialDone
@@ -63,57 +64,52 @@ func main() {
 		}
 
 		if !gs.Player.Dead {
-			// Check if shift is held for running/sprinting
-			holdingShift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
-
-			// When shift is held, use IsKeyDown for continuous movement
-			// When shift is not held, use IsKeyPressed for turn-based movement
-			var rightKey, leftKey, upKey, downKey bool
-			if holdingShift && gs.TurnAnimation <= 0 {
-				rightKey = rl.IsKeyDown(rl.KeyRight) || rl.IsKeyDown(rl.KeyD)
-				leftKey = rl.IsKeyDown(rl.KeyLeft) || rl.IsKeyDown(rl.KeyA)
-				upKey = rl.IsKeyDown(rl.KeyUp) || rl.IsKeyDown(rl.KeyW)
-				downKey = rl.IsKeyDown(rl.KeyDown) || rl.IsKeyDown(rl.KeyS)
-			} else {
-				rightKey = rl.IsKeyPressed(rl.KeyRight) || rl.IsKeyPressed(rl.KeyD)
-				leftKey = rl.IsKeyPressed(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyA)
-				upKey = rl.IsKeyPressed(rl.KeyUp) || rl.IsKeyPressed(rl.KeyW)
-				downKey = rl.IsKeyPressed(rl.KeyDown) || rl.IsKeyPressed(rl.KeyS)
+			// Handle movement based on input state
+			// When running (shift/trigger held), allow continuous movement
+			// When not running, use turn-based movement
+			var shouldMove bool
+			if inputState.IsRunning && gs.TurnAnimation <= 0 {
+				shouldMove = true
+			} else if inputState.IsPressed {
+				shouldMove = true
 			}
 
-			// Right: Arrow Right or D
-			if rightKey {
-				gs.PlayerTurn(game.Right)
-				gs.TurnAnimation = 1.0
-				gs.ItemsTurn()
-				gs.UpdateEepers()
-				gs.UpdateBombs()
+			if shouldMove {
+				// Right
+				if inputState.MoveRight {
+					gs.PlayerTurn(game.Right)
+					gs.TurnAnimation = 1.0
+					gs.ItemsTurn()
+					gs.UpdateEepers()
+					gs.UpdateBombs()
+				}
+				// Left
+				if inputState.MoveLeft {
+					gs.PlayerTurn(game.Left)
+					gs.TurnAnimation = 1.0
+					gs.ItemsTurn()
+					gs.UpdateEepers()
+					gs.UpdateBombs()
+				}
+				// Up
+				if inputState.MoveUp {
+					gs.PlayerTurn(game.Up)
+					gs.TurnAnimation = 1.0
+					gs.ItemsTurn()
+					gs.UpdateEepers()
+					gs.UpdateBombs()
+				}
+				// Down
+				if inputState.MoveDown {
+					gs.PlayerTurn(game.Down)
+					gs.TurnAnimation = 1.0
+					gs.ItemsTurn()
+					gs.UpdateEepers()
+					gs.UpdateBombs()
+				}
 			}
-			// Left: Arrow Left or A
-			if leftKey {
-				gs.PlayerTurn(game.Left)
-				gs.TurnAnimation = 1.0
-				gs.ItemsTurn()
-				gs.UpdateEepers()
-				gs.UpdateBombs()
-			}
-			// Up: Arrow Up or W
-			if upKey {
-				gs.PlayerTurn(game.Up)
-				gs.TurnAnimation = 1.0
-				gs.ItemsTurn()
-				gs.UpdateEepers()
-				gs.UpdateBombs()
-			}
-			// Down: Arrow Down or S
-			if downKey {
-				gs.PlayerTurn(game.Down)
-				gs.TurnAnimation = 1.0
-				gs.ItemsTurn()
-				gs.UpdateEepers()
-				gs.UpdateBombs()
-			}
-			if rl.IsKeyPressed(rl.KeySpace) {
+
+			if inputState.PlaceBomb {
 				gs.PlantBomb()
 			}
 		}
@@ -121,11 +117,10 @@ func main() {
 		gs.UpdateExplosions()
 		ui.UpdatePlayerEyes(&gs.Player)
 
-		// Update turn animation with faster speed when shift is held
+		// Update turn animation with faster speed when running (shift/trigger held)
 		if gs.TurnAnimation > 0 {
-			holdingShift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
 			animSpeed := float32(10.0)
-			if holdingShift {
+			if inputState.IsRunning {
 				animSpeed = 12.5 // 25% faster when sprinting (1.0 / 0.8 = 1.25)
 			}
 			gs.TurnAnimation -= rl.GetFrameTime() * animSpeed
