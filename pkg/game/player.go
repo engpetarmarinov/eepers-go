@@ -115,6 +115,16 @@ func (gs *State) PlayerTurn(dir playerDirection) {
 				}
 			}
 		}
+
+		// Check if player stepped on a portal
+		portal := gs.GetPortalAtPosition(newPos)
+		if portal != nil && portal.OpenProgress > 0.8 {
+			// Start portal entry animation instead of immediately activating
+			gs.Player.EnteringPortal = true
+			rl.PlaySound(audio.EnterPortalSound)
+			gs.Player.PortalEntryTime = rl.GetTime()
+			gs.Player.PortalToActivate = portal.ID
+		}
 	case world.CellDoor:
 		if gs.Player.Keys > 0 {
 			gs.Player.Keys--
@@ -135,6 +145,7 @@ func (gs *State) WithinMap(pos world.IVector2) bool {
 // KillPlayer marks the player as dead and records the time of death.
 func (gs *State) KillPlayer() {
 	if !gs.Player.Dead {
+		rl.PlaySound(audio.HurtSound)
 		gs.Player.Health = 0
 		gs.Player.Dead = true
 		gs.Player.DeathTime = rl.GetTime()

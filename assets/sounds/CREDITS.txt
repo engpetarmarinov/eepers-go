@@ -8,3 +8,4 @@ Used Sounds:
     https://opengameart.org/content/fire-whip-hit-yo-frankie
     https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
     https://opengameart.org/content/victory-fanfare-short
+    https://opengameart.org/content/hurt-sound-effects

@@ -10,6 +10,7 @@ type MenuOption int
 
 const (
 	MenuContinue MenuOption = iota
+	MenuExitLevel
 	MenuRestart
 	MenuQuit
 )
@@ -26,7 +27,7 @@ func NewMenuState() MenuState {
 	return MenuState{
 		IsOpen:         false,
 		SelectedOption: MenuContinue,
-		TotalOptions:   3, // Continue, Restart, Quit
+		TotalOptions:   4, // Continue, Exit Level, Restart, Quit
 	}
 }
 
@@ -60,10 +61,38 @@ func (ms *MenuState) MoveUp() {
 	}
 }
 
+// MoveUpInHub moves selection up, skipping Exit Level
+func (ms *MenuState) MoveUpInHub() {
+	if ms.SelectedOption > MenuContinue {
+		ms.SelectedOption--
+		// Skip Exit Level in hub
+		if ms.SelectedOption == MenuExitLevel {
+			ms.SelectedOption--
+		}
+	} else {
+		// Wrap to bottom (Quit)
+		ms.SelectedOption = MenuQuit
+	}
+}
+
 // MoveDown moves selection down
 func (ms *MenuState) MoveDown() {
 	if ms.SelectedOption < MenuQuit {
 		ms.SelectedOption++
+	} else {
+		// Wrap to top
+		ms.SelectedOption = MenuContinue
+	}
+}
+
+// MoveDownInHub moves selection down, skipping Exit Level
+func (ms *MenuState) MoveDownInHub() {
+	if ms.SelectedOption < MenuQuit {
+		ms.SelectedOption++
+		// Skip Exit Level in hub
+		if ms.SelectedOption == MenuExitLevel {
+			ms.SelectedOption++
+		}
 	} else {
 		// Wrap to top
 		ms.SelectedOption = MenuContinue
@@ -77,6 +106,8 @@ func GetOptionText(option MenuOption) string {
 		return "Continue"
 	case MenuRestart:
 		return "Restart"
+	case MenuExitLevel:
+		return "Exit Level"
 	case MenuQuit:
 		return "Quit"
 	default:
@@ -85,7 +116,7 @@ func GetOptionText(option MenuOption) string {
 }
 
 // DrawMenu draws the pause menu in the center of the screen
-func (ms *MenuState) DrawMenu(screenWidth, screenHeight int32) {
+func (ms *MenuState) DrawMenu(inHub bool) {
 	if !ms.IsOpen {
 		return
 	}
@@ -139,11 +170,17 @@ func (ms *MenuState) DrawMenu(screenWidth, screenHeight int32) {
 	optionY := menuY + 100
 	optionSpacing := int32(50)
 
+	optionIndex := int32(0)
 	for i := MenuOption(0); i <= MenuQuit; i++ {
+		// Skip "Exit Level" if we're already in the hub
+		if i == MenuExitLevel && inHub {
+			continue
+		}
+
 		optionText := GetOptionText(i)
 		textWidth := rl.MeasureText(optionText, optionSize)
 		textX := menuX + (menuWidth-textWidth)/2
-		textY := optionY + int32(i)*optionSpacing
+		textY := optionY + optionIndex*optionSpacing
 
 		// Highlight selected option
 		if i == ms.SelectedOption {
@@ -159,5 +196,7 @@ func (ms *MenuState) DrawMenu(screenWidth, screenHeight int32) {
 		} else {
 			rl.DrawText(optionText, textX, textY, optionSize, palette.Colors["COLOR_LABEL"])
 		}
+
+		optionIndex++
 	}
 }

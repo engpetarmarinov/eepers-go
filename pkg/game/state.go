@@ -14,6 +14,7 @@ type State struct {
 	Eepers             []entities.EeperState
 	Bombs              []entities.BombState
 	Explosions         []entities.ExplosionState
+	Portals            []entities.PortalState
 	TurnAnimation      float32
 	Camera             rl.Camera2D
 	Tutorial           TutorialState
@@ -21,6 +22,9 @@ type State struct {
 	ShouldQuit         bool
 	DurationOfLastTurn float64
 	Checkpoint         CheckpointState
+	WorldConfig        WorldConfig // Configuration for all worlds and levels
+	InHub              bool        // Whether player is currently in a hub level
+	CurrentLevelPath   string      // Path to the currently loaded level
 }
 
 // CheckpointState stores a snapshot of the game state for respawning
@@ -127,4 +131,101 @@ func (gs *State) RestoreCheckpoint() {
 
 	// Reset turn animation to prevent visual glitches
 	gs.TurnAnimation = 0
+}
+
+// LoadLevel loads a specific level by path
+func (gs *State) LoadLevel(levelPath string, isHub bool) error {
+	if levelPath == "" {
+		return nil // Invalid level path
+	}
+
+	// Clear all dynamic game state
+	gs.Bombs = nil
+	gs.Explosions = nil
+	gs.Eepers = nil
+	gs.Items = nil
+	gs.Portals = nil
+	gs.TurnAnimation = 0
+
+	// Load the level
+	err := LoadGameFromImage(levelPath, gs, true)
+	if err != nil {
+		return err
+	}
+
+	// Set current level info
+	gs.CurrentLevelPath = levelPath
+	gs.InHub = isHub
+
+	// Reset player state
+	gs.Player.Health = 1.0
+	gs.Player.Dead = false
+	gs.Player.ReachedFather = false
+	gs.Player.VictoryTime = 0
+	gs.Player.BombSlots = 1 // Player starts with 1 bomb slot
+	gs.Player.Bombs = 0     // Player starts with no bombs
+	gs.Player.Keys = 0      // Player starts with no keys
+
+	// Reset camera
+	gs.Camera.Zoom = 1.0
+
+	// Save checkpoint for this level
+	gs.SaveCheckpoint()
+
+	return nil
+}
+
+// LoadHub loads the hub level for the current world
+func (gs *State) LoadHub() error {
+	hubPath := gs.WorldConfig.GetCurrentHub()
+	return gs.LoadLevel(hubPath, true)
+}
+
+// LoadNextLevel loads the next level, returns true if there is a next level
+func (gs *State) LoadNextLevel() (bool, error) {
+	// If we're in a regular level (not hub), return to hub
+	if !gs.InHub {
+		err := gs.LoadHub()
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	// If we're in the hub and reached Father, we've completed all levels in this world
+	// Try to advance to the next world
+	if gs.WorldConfig.NextWorld() {
+		err := gs.LoadHub()
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	// No more worlds
+	return false, nil
+}
+
+// RestartFromFirstLevel restarts the game from the first world's hub
+func (gs *State) RestartFromFirstLevel() error {
+	// Reset tutorial
+	gs.Tutorial = TutorialState{
+		Phase: TutorialMove,
+	}
+
+	// Reset to first world
+	gs.WorldConfig.CurrentWorld = 0
+
+	// Load first world's hub
+	return gs.LoadHub()
+}
+
+// LoadLevelFromPortal loads a level based on portal number in the current world
+func (gs *State) LoadLevelFromPortal(portalNumber int) error {
+	levelPath := gs.WorldConfig.GetLevel(portalNumber)
+	if levelPath == "" {
+		return nil // Invalid portal number
+	}
+
+	return gs.LoadLevel(levelPath, false)
 }

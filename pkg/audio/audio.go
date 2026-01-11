@@ -5,16 +5,19 @@ import (
 )
 
 var (
-	BlastSound      rl.Sound
-	KeyPickupSound  rl.Sound
-	BombPickupSound rl.Sound
-	OpenDoorSound   rl.Sound
-	CheckpointSound rl.Sound
-	PlantBombSound  rl.Sound
-	GuardStepSound  rl.Sound
-	VictorySound    rl.Sound
-	FootstepsSounds []rl.Sound
-	AmbientMusic    rl.Music
+	BlastSound       rl.Sound
+	KeyPickupSound   rl.Sound
+	BombPickupSound  rl.Sound
+	OpenDoorSound    rl.Sound
+	OpenPortalSound  rl.Sound
+	EnterPortalSound rl.Sound
+	CheckpointSound  rl.Sound
+	PlantBombSound   rl.Sound
+	GuardStepSound   rl.Sound
+	VictorySound     rl.Sound
+	FootstepsSounds  []rl.Sound
+	AmbientMusic     rl.Music
+	HurtSound        rl.Sound
 )
 
 // LoadAudio loads all the audio files for the game.
@@ -25,6 +28,8 @@ func LoadAudio() {
 	KeyPickupSound = rl.LoadSound("assets/sounds/key-pickup.wav")
 	BombPickupSound = rl.LoadSound("assets/sounds/bomb-pickup.ogg")
 	OpenDoorSound = rl.LoadSound("assets/sounds/open-door.wav")
+	OpenPortalSound = rl.LoadSound("assets/sounds/open-portal.wav")
+	EnterPortalSound = rl.LoadSound("assets/sounds/enter-portal.wav")
 	CheckpointSound = rl.LoadSound("assets/sounds/checkpoint.ogg")
 	PlantBombSound = rl.LoadSound("assets/sounds/plant-bomb.wav")
 	GuardStepSound = rl.LoadSound("assets/sounds/guard-step.ogg")
@@ -37,6 +42,7 @@ func LoadAudio() {
 	FootstepsSounds[3] = rl.LoadSound("assets/sounds/footsteps.mp3")
 
 	AmbientMusic = rl.LoadMusicStream("assets/sounds/ambient.wav")
+	HurtSound = rl.LoadSound("assets/sounds/hurt.mp3")
 }
 
 // UnloadAudio unloads all the audio files.
@@ -45,6 +51,8 @@ func UnloadAudio() {
 	rl.UnloadSound(KeyPickupSound)
 	rl.UnloadSound(BombPickupSound)
 	rl.UnloadSound(OpenDoorSound)
+	rl.UnloadSound(OpenPortalSound)
+	rl.UnloadSound(EnterPortalSound)
 	rl.UnloadSound(CheckpointSound)
 	rl.UnloadSound(PlantBombSound)
 	rl.UnloadSound(GuardStepSound)
@@ -53,5 +61,6 @@ func UnloadAudio() {
 		rl.UnloadSound(s)
 	}
 	rl.UnloadMusicStream(AmbientMusic)
+	rl.UnloadSound(HurtSound)
 	rl.CloseAudioDevice()
 }

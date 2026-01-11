@@ -28,6 +28,10 @@ const (
 	LevelPlayer
 	LevelFather
 	LevelBombSlot
+	LevelPortal1
+	LevelPortal2
+	LevelPortal3
+	LevelPortal4
 )
 
 // LevelCellColor maps level cell types to their corresponding colors.
@@ -46,6 +50,10 @@ var LevelCellColor = map[LevelCell]rl.Color{
 	LevelPlayer:     rl.NewColor(0, 0, 255, 255),
 	LevelFather:     rl.NewColor(38, 95, 218, 255),
 	LevelBombSlot:   rl.NewColor(188, 83, 83, 255),
+	LevelPortal1:    rl.NewColor(16, 0, 0, 255),
+	LevelPortal2:    rl.NewColor(32, 0, 0, 255),
+	LevelPortal3:    rl.NewColor(48, 0, 0, 255),
+	LevelPortal4:    rl.NewColor(64, 0, 0, 255),
 }
 
 // LoadGameFromImage loads a game state from an image file.
@@ -74,6 +82,8 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 			color := rl.NewColor(uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(a>>8))
 
 			levelCell := LevelNone
+
+			// Standard color matching for other cell types (requires exact RGBA match)
 			for cell, cellColor := range LevelCellColor {
 				if cellColor.R == color.R && cellColor.G == color.G && cellColor.B == color.B && cellColor.A == color.A {
 					levelCell = cell
@@ -127,6 +137,18 @@ func LoadGameFromImage(filePath string, gs *State, updatePlayer bool) error {
 					// Initialize eyes target to look down (default direction)
 					gs.Player.EyesTarget = world.IVector2{X: x, Y: y + 1}
 				}
+			case LevelPortal1:
+				gs.Map[y][x] = world.CellFloor
+				gs.SpawnPortal(world.IVector2{X: x, Y: y}, 1)
+			case LevelPortal2:
+				gs.Map[y][x] = world.CellFloor
+				gs.SpawnPortal(world.IVector2{X: x, Y: y}, 2)
+			case LevelPortal3:
+				gs.Map[y][x] = world.CellFloor
+				gs.SpawnPortal(world.IVector2{X: x, Y: y}, 3)
+			case LevelPortal4:
+				gs.Map[y][x] = world.CellFloor
+				gs.SpawnPortal(world.IVector2{X: x, Y: y}, 4)
 			default:
 				gs.Map[y][x] = world.CellFloor
 			}
