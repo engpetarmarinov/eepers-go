@@ -37,6 +37,9 @@ func (ms *MenuState) ToggleMenu() {
 	if ms.IsOpen {
 		// Reset to first option when opening
 		ms.SelectedOption = MenuContinue
+		rl.TraceLog(rl.LogInfo, "MENU OPENED: Screen=%dx%d, Render=%dx%d",
+			rl.GetScreenWidth(), rl.GetScreenHeight(),
+			rl.GetRenderWidth(), rl.GetRenderHeight())
 	}
 }
 
@@ -115,60 +118,64 @@ func GetOptionText(option MenuOption) string {
 	}
 }
 
-// DrawMenu draws the pause menu in the center of the screen
 func (ms *MenuState) DrawMenu(inHub bool) {
 	if !ms.IsOpen {
 		return
 	}
 
-	currentWidth := int32(rl.GetScreenWidth())
-	currentHeight := int32(rl.GetScreenHeight())
+	// screenWidth := int32(rl.GetScreenWidth())
+	// screenHeight := int32(rl.GetScreenHeight())
 
-	// Get render dimensions (which might differ from screen dimensions on HiDPI/Retina)
 	renderWidth := int32(rl.GetRenderWidth())
 	renderHeight := int32(rl.GetRenderHeight())
-
-	// Use the larger of the two to ensure full coverage
-	overlayWidth := currentWidth
-	overlayHeight := currentHeight
-	if renderWidth > currentWidth {
-		overlayWidth = renderWidth
+	// Menu box dimensions - use screen dimensions for scaling and centering
+	menuWidth := renderWidth / 3
+	if menuWidth < 400 {
+		menuWidth = 400
 	}
-	if renderHeight > currentHeight {
-		overlayHeight = renderHeight
+	menuHeight := renderHeight / 3
+	if menuHeight < 300 {
+		menuHeight = 300
 	}
+	menuX := (renderWidth - menuWidth) / 2
+	menuY := (renderHeight - menuHeight) / 2
 
 	// Semi-transparent overlay covering the entire screen
 	// Use DrawRectangleRec for precise full-screen coverage
-	fullScreenRect := rl.NewRectangle(0, 0, float32(overlayWidth), float32(overlayHeight))
+	fullScreenRect := rl.NewRectangle(0, 0, float32(renderWidth), float32(renderHeight))
 	rl.DrawRectangleRec(fullScreenRect, rl.Fade(rl.Black, 0.7))
 
-	// Menu box dimensions - use current screen dimensions for centering
-	menuWidth := int32(400)
-	menuHeight := int32(300)
-	menuX := (currentWidth - menuWidth) / 2
-	menuY := (currentHeight - menuHeight) / 2
-
-	// Draw menu background
+	// Draw menu background (DarkGray provides contrast without needing Alpha Blending)
 	rl.DrawRectangle(menuX, menuY, menuWidth, menuHeight, palette.Colors["COLOR_BACKGROUND"])
 
-	// Draw menu border
+	// Draw menu border using simple basic lines (avoids DrawRectangleLinesEx GL batch bugs)
 	borderColor := palette.Colors["COLOR_LABEL"]
 	rl.DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, borderColor)
 	rl.DrawRectangleLines(menuX+1, menuY+1, menuWidth-2, menuHeight-2, borderColor)
 
+	// Scale fonts according to menu height
+	titleSize := menuHeight / 6
+	if titleSize < 40 {
+		titleSize = 40
+	}
+	optionSize := menuHeight / 10
+	if optionSize < 30 {
+		optionSize = 30
+	}
+	optionSpacing := menuHeight / 6
+	if optionSpacing < 50 {
+		optionSpacing = 50
+	}
+
 	// Draw title
 	title := "PAUSED"
-	titleSize := int32(40)
 	titleWidth := rl.MeasureText(title, titleSize)
 	titleX := menuX + (menuWidth-titleWidth)/2
-	titleY := menuY + 30
+	titleY := menuY + menuHeight/10
 	rl.DrawText(title, titleX, titleY, titleSize, palette.Colors["COLOR_LABEL"])
 
 	// Draw menu options
-	optionSize := int32(30)
-	optionY := menuY + 100
-	optionSpacing := int32(50)
+	optionY := menuY + menuHeight/3
 
 	optionIndex := int32(0)
 	for i := MenuOption(0); i <= MenuQuit; i++ {
@@ -185,7 +192,7 @@ func (ms *MenuState) DrawMenu(inHub bool) {
 		// Highlight selected option
 		if i == ms.SelectedOption {
 			// Draw selection background
-			highlightPadding := int32(10)
+			highlightPadding := optionSize / 3
 			highlightWidth := textWidth + highlightPadding*2
 			highlightHeight := optionSize + highlightPadding
 			highlightX := textX - highlightPadding
@@ -194,7 +201,7 @@ func (ms *MenuState) DrawMenu(inHub bool) {
 			rl.DrawRectangle(highlightX, highlightY, highlightWidth, highlightHeight, palette.Colors["COLOR_PLAYER"])
 			rl.DrawText(optionText, textX, textY, optionSize, palette.Colors["COLOR_BACKGROUND"])
 		} else {
-			rl.DrawText(optionText, textX, textY, optionSize, palette.Colors["COLOR_LABEL"])
+			rl.DrawText(optionText, textX, textY, optionSize, rl.LightGray)
 		}
 
 		optionIndex++

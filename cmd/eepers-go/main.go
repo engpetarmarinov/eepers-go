@@ -19,11 +19,18 @@ import (
 func main() {
 	setupResourcePath()
 	rl.SetConfigFlags(rl.FlagWindowMaximized | rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowHighdpi)
-	screenWidth := int32(rl.GetMonitorWidth(0))
-	screenHeight := int32(rl.GetMonitorHeight(0))
-	rl.InitWindow(screenWidth, screenHeight, "Eepers Go")
+
+	// Create a generously sized physical window first to guarantee a healthy OpenGL context on X11
+	rl.InitWindow(1280, 720, "Eepers Go")
+
+	// Explicitly query the primary monitor for full dimensions
+	monitor := rl.GetCurrentMonitor()
+	screenWidth := int32(rl.GetMonitorWidth(monitor))
+	screenHeight := int32(rl.GetMonitorHeight(monitor))
+
+	// Force the internal window buffer to exactly match the monitor before going fullscreen
+	rl.SetWindowSize(int(screenWidth), int(screenHeight))
 	rl.ToggleFullscreen()
-	// Disable ESC key as default exit key so we can use it for menu
 	rl.SetExitKey(0)
 	defer rl.CloseWindow()
 	audio.LoadAudio()
@@ -69,6 +76,8 @@ func main() {
 
 	rl.SetTargetFPS(60)
 
+	var lastMenuToggle float64
+
 	for !rl.WindowShouldClose() && !gs.ShouldQuit {
 		screenWidth := int32(rl.GetScreenWidth())
 		screenHeight := int32(rl.GetScreenHeight())
@@ -78,9 +87,10 @@ func main() {
 		// Update music stream
 		rl.UpdateMusicStream(audio.AmbientMusic)
 
-		// Handle menu toggle
-		if inputState.MenuToggle {
+		// Handle menu toggle with debounce to prevent double-triggering
+		if inputState.MenuToggle && rl.GetTime()-lastMenuToggle > 0.25 {
 			gs.Menu.ToggleMenu()
+			lastMenuToggle = rl.GetTime()
 			// Pause/resume music based on menu state
 			if gs.Menu.IsOpen {
 				rl.PauseMusicStream(audio.AmbientMusic)
